@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import sys
-
+# ALLO
 # Paramètres de l'image
 rows, cols = 24, 32  # Résolution du capteur MLX90640
 
