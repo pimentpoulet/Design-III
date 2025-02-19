@@ -1,34 +1,17 @@
 from mlx90640_evb9064x import *
 from mlx90640 import *
 from calibration import *
+from affichage import *
 import numpy as np
-import matplotlib.pyplot as plt
 import time
-import sys
-# ALLO
+
+
 # Paramètres de l'image
 rows, cols = 24, 32  # Résolution du capteur MLX90640
-
-def on_close(event):
-    """Arrête le programme lorsqu'on ferme la fenêtre."""
-    print("Fermeture détectée. Arrêt du programme...")
-    plt.close()  # Ferme la figure
-    #sys.exit(0)  # Quitte immédiatement le script
-
-# Initialisation de la figure
-fig, ax = plt.subplots()
-fig.canvas.mpl_connect('close_event', on_close)  # Détecte la fermeture
-image = ax.imshow(np.zeros((rows, cols)), cmap='inferno', vmin=20, vmax=30)
-plt.colorbar(image, ax=ax)
-
-def update_image(data_array):
-    """Met à jour l'image thermique"""
-    image.set_array(data_array)
-    plt.draw()
-    plt.pause(0.001)  # Pause courte pour rafraîchir l'affichage
+MAX_RETRIES = 5  # Nombre max de tentatives en cas de timeout
 
 def calculate_centroid(temperature_array):
-    """Calculate the centroid of the temperature array."""
+    """Calcule le centroïde de la distribution thermique."""
     total_temp = np.sum(temperature_array)
     if total_temp == 0:
         return (0, 0)
@@ -57,49 +40,43 @@ def main():
 
     print("Démarrage de l'affichage thermique...")
 
-    moy_diff = np.zeros((rows, cols, 1))  # Initialize with a 3rd dimension
+    moy_diff = np.zeros((rows, cols, 1))  # Initialisation
 
-    pixel_row, pixel_col = 12, 16  # Coordinates of the pixel to monitor
-    pixel_temps = []  # List to store temperature values of the pixel
+    pixel_row, pixel_col = 12, 16  # Coordonnées du pixel à surveiller
+    pixel_temps = []  # Liste pour stocker la température du pixel
 
     frame_buffer = []
-    buffer_size = 10  # Number of frames to average
+    buffer_size = 10  # Nombre de frames à moyenner
 
-    # Boucle principale pour la capture et l'affichage en direct
-    while plt.fignum_exists(fig.number):  # Continue tant que la fenêtre est ouverte
-        dev.get_frame_data()
-        ta = dev.get_ta() - 8.0  # Compensation de la température ambiante
-        emissivity = 1.0
-        to = dev.calculate_to(emissivity, ta)  # Conversion en températures
-        to_array = np.array(to).reshape((rows, cols))
-        to_array *= gain
-        to_array += off_set
+    while True:  # Boucle infinie, gérée par OpenCV
+        try:
+            dev.get_frame_data()
+            ta = dev.get_ta() - 8.0  # Compensation de la température ambiante
+            emissivity = 1.0
+            to = dev.calculate_to(emissivity, ta)  # Conversion en températures
+            to_array = np.array(to).reshape((rows, cols))
+            to_array *= gain
+            to_array += off_set
 
-        moy_diff, mean_moy_diff = update_moy_diff(moy_diff, to_array, filename="mean_moy_diff.txt")
+            moy_diff, mean_moy_diff = update_moy_diff(moy_diff, to_array, filename="mean_moy_diff.txt")
 
-        frame_buffer.append(to_array + mean_moy_diff)
-        if len(frame_buffer) > buffer_size:
-            frame_buffer.pop(0)
+            frame_buffer.append(to_array + mean_moy_diff)
+            if len(frame_buffer) > buffer_size:
+                frame_buffer.pop(0)
 
-        averaged_frame = np.mean(frame_buffer, axis=0)
-        update_image(averaged_frame)  # Mise à jour de l'affichage
+            averaged_frame = np.mean(frame_buffer, axis=0)
+            show_image_opencv(averaged_frame)  # Affichage OpenCV
 
-        # Store the temperature value of the specified pixel
-        pixel_temps.append(to_array[pixel_row, pixel_col])
+            # Stocke la température du pixel surveillé
+            pixel_temps.append(to_array[pixel_row, pixel_col])
 
-        # Calculate and print the centroid
-        centroid = calculate_centroid(averaged_frame)
-        print(f"Centroid of the temperature distribution: {centroid}")
+            # Calcul et affichage du centroïde
+            centroid = calculate_centroid(averaged_frame)
+            print(f"Centroid de la distribution thermique: {centroid}")
 
-    # Plot the temperature values of the specified pixel
-    plt.figure()
-    plt.plot(pixel_temps[20:])
-    plt.xlabel('Frame')
-    plt.ylabel('Temperature (°C)')
-    plt.title(f'Temperature of Pixel ({pixel_row}, {pixel_col}) Over Time')
-    plt.show()
-
-    print("Programme terminé.")
+        except Exception as e:
+            print(f"Erreur : {e}")
+            time.sleep(1)
 
 if __name__ == "__main__":
     main()
