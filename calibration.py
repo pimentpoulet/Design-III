@@ -26,7 +26,3 @@ def update_moy_diff(moy_diff, data, filename=f'{temp}'+"mean_moy_diff.txt"):
         #exit()
         return moy_diff, mean_moy_diff
     return moy_diff, np.zeros((rows, cols))
-
-
-
-
