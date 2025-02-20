@@ -1,6 +1,6 @@
 from mlx90640_evb9064x import *
 from mlx90640 import *
-from calibration import *
+from calibration_class import *
 import numpy as np
 from powermeter import PowerMeter
 
