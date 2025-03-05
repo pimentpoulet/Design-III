@@ -6,7 +6,7 @@ import cv2
 
 
 class PowerMeter:
-    def __init__(self):
+    def __init__(self, buffer_size=32):
         # Initialisation de la caméra
         self.dev = MLX90640()
         self.dev.i2c_init(evb9064x_get_i2c_comport_url('auto'))
@@ -15,11 +15,25 @@ class PowerMeter:
         self.dev.extract_parameters()
         #Initialisation de la structure de données
         self.rows, self.cols = 24, 32
-        self.temperature_array = np.zeros((self.rows, self.cols, 1))
-        #Initialisation de l'image
+        self.buffer_size = buffer_size
+        self.temp_arrays = np.zeros((self.buffer_size, self.rows, self.cols), dtype=np.float32)
 
     
+    def update_temperature(self, temp_array):
+        if temp_array.shape != (self.rows, self.cols):
+            raise ValueError("The shape of the temperature array is not correct")
+        if temp_array.dtype != np.float32:
+            raise ValueError("The type of the temperature array is not correct")
+        self.temp_arrays = np.roll(self.temp_arrays, 1, axis=0)
+        self.temp_arrays[0] = temp_array
+    
+    
     def get_temperature(self):
+        return np.mean(self.temp_arrays, axis=0)
+    
+
+    def get_power(self):
+        temp = self.get_temperature()
         pass
 
 
