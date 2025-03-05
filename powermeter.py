@@ -19,21 +19,32 @@ class PowerMeter:
         self.temp_arrays = np.zeros((self.buffer_size, self.rows, self.cols), dtype=np.float32)
 
     
-    def update_temperature(self, temp_array):
+    def update_temperature(self, temp_array: np.ndarray):
+        # Catch error
         if temp_array.shape != (self.rows, self.cols):
             raise ValueError("The shape of the temperature array is not correct")
         if temp_array.dtype != np.float32:
             raise ValueError("The type of the temperature array is not correct")
+        # Enlève la plus vieille valeur et ajoute la nouvelle
         self.temp_arrays = np.roll(self.temp_arrays, 1, axis=0)
         self.temp_arrays[0] = temp_array
     
     
-    def get_temperature(self):
+    def get_moy_temp(self) -> np.ndarray:
+        # Retourne la moyenne des températures dans le buffer
         return np.mean(self.temp_arrays, axis=0)
     
 
-    def get_power(self):
-        temp = self.get_temperature()
+    def get_temp(self) -> np.ndarray:
+        self.dev.get_frame_data()
+        temp_amb = self.dev.get_ta() # Compensation de la température ambiante
+        emissivity = 1.0
+        temp_array = self.dev.calculate_to(emissivity, temp_amb)  # Conversion en températures
+        return np.array(temp_array).reshape((self.rows, self.cols))
+
+
+    def get_power(self) -> float:
+        temp = self.get_moy_temp()
         pass
 
 
