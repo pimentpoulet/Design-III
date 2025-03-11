@@ -32,8 +32,6 @@ class PowerMeter:
         # Catch error
         if temp_array.shape != (self.rows, self.cols):
             raise ValueError("The shape of the temperature array is not correct")
-        if temp_array.dtype != np.float32:
-            raise ValueError("The type of the temperature array is not correct")
         # Enlève la plus vieille valeur et ajoute la nouvelle
         self.temp_arrays = np.roll(self.temp_arrays, 1, axis=0)
         self.temp_arrays[0,:,:] = temp_array
