@@ -70,6 +70,7 @@ class PowerMeterApp:
         self.power_values_1 = None
         self.wavelengths_2 = None
         self.power_values_2 = None
+        self.last_selected_wavelength = ""
 
         size = 20
         self.big_font = tkFont.Font(family='Calibri', size=size)
@@ -119,17 +120,20 @@ class PowerMeterApp:
         self.load_button_2.grid(row=1, column=3, sticky=tk.W)
 
         # wavelength label
-        self.wavelength_label = tk.Label(self.box, text="Wavelength:")
+        self.wavelength_label = tk.Label(self.box, text="Wavelength [nm]:")
         self.wavelength_label.grid(row=0, column=5, padx=10, pady=10, sticky="e")
 
         # wavelength selection drop-down
         self.selected_wavelength = tk.StringVar()
-        wavelength_options = ["unknown wavelength", 450, 976, 1976]
-        self.wavelength_menu = ttk.Combobox(self.box, textvariable=self.selected_wavelength, values=wavelength_options,
-                                            state="readonly")
-        self.wavelength_menu.current(0)
-        self.wavelength_menu.bind("<<ComboboxSelected>>", self.on_wavelength_selected)
+        wavelength_options = sorted(["determine wavelength", 450, 976, 1976], key=lambda x: (isinstance(x, str), x))
+        self.wavelength_menu = ttk.Combobox(self.box, textvariable=self.selected_wavelength, values=wavelength_options, width=35)
         self.wavelength_menu.grid(row=0, column=6, padx=10, pady=10, sticky="w")
+        # self.wavelength_menu.set("Enter wavelength or select one")
+
+        # Bind events for selection or manual entry
+        self.wavelength_menu.bind("<<ComboboxSelected>>", self.on_wavelength_selected)
+        self.wavelength_menu.bind("<Return>", self.on_wavelength_entered)
+        self.wavelength_menu.bind("<FocusOut>", self.on_wavelength_entered)
 
         # firmware version label
         self.firmware_label = tk.Label(self.root, text="", font=self.big_font)
@@ -148,9 +152,6 @@ class PowerMeterApp:
 
         sys.stdout = TextRedirector(self.log_text)
 
-        # debugging
-        # print_grid_info(self.root)
-
         self.device = PowerMeterDevice()
         self.is_refreshing = False          # flag for running process
 
@@ -162,9 +163,31 @@ class PowerMeterApp:
 
         self.update_loop()  # We update once at least
 
-    def on_wavelength_selected(self, event):
-        selected_value = self.selected_wavelength.get()
-        print(f"Selected Wavelength: {selected_value}")
+    def on_wavelength_selected(self, event=None):
+        """
+        Handles when a preset wavelength is selected
+        """
+        print(f"Selected wavelength: {self.selected_wavelength.get()}")
+
+    def on_wavelength_entered(self, event=None):
+        """
+        Handles manual entry of wavelength
+        """
+        new_value = self.selected_wavelength.get()
+        if new_value == "" or new_value == self.last_selected_wavelength:
+            pass
+        else:
+            if new_value in self.wavelength_menu["values"]:
+                pass
+            else:
+                self.last_selected_wavelength = new_value
+
+                current_values = list(self.wavelength_menu["value"])
+                current_values.append(new_value)
+                current_values.sort(key=lambda x: (isinstance(x, str), x))
+
+                self.wavelength_menu["values"] = tuple(current_values)
+                print(f"User defined wavelength: {self.selected_wavelength.get()}")
 
     def display_data_1(self, data_tuple):
         if data_tuple is None:
