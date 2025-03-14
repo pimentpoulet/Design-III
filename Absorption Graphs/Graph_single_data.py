@@ -175,7 +175,7 @@ material_power_array = np.concatenate((material_power_mW_low, material_power_mW_
 
 """ Get Absorption Curve """
 
-power_absorption_array = 100 * (material_power_array / source_power_array)
+power_absorption_array = 100 * (1 - (material_power_array / source_power_array))
 
 
 """ Display Source And Material Absorption Curves """
