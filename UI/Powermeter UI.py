@@ -71,10 +71,10 @@ class PowerMeterApp:
         self.wavelengths_2 = None
         self.power_values_2 = None
         self.last_selected_wavelength = ""
+        self.current_values = [450, 976, 1976]
 
-        size = 20
-        self.big_font = tkFont.Font(family='Calibri', size=size)
-        self.bigb_font = tkFont.Font(family='Calibri', size=size, weight='bold')
+        font = tkFont.Font(family='Trebuchet MS', size=12)
+        font_pw = tkFont.Font(family='Trebuchet MS', size=20)
 
         # setup the power graph
         self.fig_1, self.ax_1 = plt.subplots(figsize=(6, 4))
@@ -90,43 +90,49 @@ class PowerMeterApp:
         self.box.grid(row=0, column=0, columnspan=4, padx=25, pady=10, sticky="nsew")
 
         # power measurement display
-        self.power_label = tk.Label(self.box, text="Power reading:")
-        self.power_label.grid(row=1, column=5, padx=0, pady=10, sticky="w")
-        self.measurement_label = tk.Label(self.box, text="--- mW")
-        self.measurement_label.grid(row=1, column=6, padx=0, pady=10, sticky="w")
+        self.power_label = tk.Label(self.box, text="Power reading:", font=font_pw)
+        self.power_label.grid(row=0, column=7, padx=15, pady=10, sticky="e")
+        self.measurement_label = tk.Label(self.box, text="--- mW", font=font_pw)
+        self.measurement_label.grid(row=0, column=8, padx=0, pady=10, sticky="w")
+
+        # wavelength measurement display
+        self.wv_label = tk.Label(self.box, text="Wavelength reading:", font=font_pw)
+        self.wv_label.grid(row=1, column=7, padx=15, pady=10, sticky="e")
+        self.wv_measurement_label = tk.Label(self.box, text="--- nm", font=font_pw)
+        self.wv_measurement_label.grid(row=1, column=8, padx=0, pady=10, sticky="w")
 
         # start button (1,0)
-        self.start_button = tk.Button(self.box, text="Start", command=self.click_start)
+        self.start_button = tk.Button(self.box, text="Start", command=self.click_start, font=font)
         self.start_button.grid(row=0, column=1, padx=10, pady=10, sticky="ns")
 
         # save button (2,0)
-        self.save_button = tk.Button(self.box, text="Save data…", command=self.save_data)
+        self.save_button = tk.Button(self.box, text="Save data…", command=self.save_data, font=font)
         self.save_button.grid(row=0, column=2, padx=10, pady=10)
 
         # clear button (3,0)
-        self.clear_button_1 = tk.Button(self.box, text="Clear graph 1", command=self.click_clear_1)
+        self.clear_button_1 = tk.Button(self.box, text="Clear graph 1", command=self.click_clear_1, font=font)
         self.clear_button_1.grid(row=0, column=4, padx=10, pady=10)
 
         # clear button (3,0)
-        self.clear_button_2 = tk.Button(self.box, text="Clear graph 2", command=self.click_clear_2)
+        self.clear_button_2 = tk.Button(self.box, text="Clear graph 2", command=self.click_clear_2, font=font)
         self.clear_button_2.grid(row=1, column=4, padx=10, pady=10)
 
         # load button 1
-        self.load_button_1 = tk.Button(self.box, text="Load data 1", command=lambda: self.display_data_1(load_data()))
+        self.load_button_1 = tk.Button(self.box, text="Load data 1", command=lambda: self.display_data_1(load_data()), font=font)
         self.load_button_1.grid(row=0, column=3, sticky=tk.W, pady=5)
 
         # load button 2
-        self.load_button_2 = tk.Button(self.box, text="Load data 2", command=lambda: self.display_data_2(load_data()))
+        self.load_button_2 = tk.Button(self.box, text="Load data 2", command=lambda: self.display_data_2(load_data()), font=font)
         self.load_button_2.grid(row=1, column=3, sticky=tk.W)
 
         # wavelength label
-        self.wavelength_label = tk.Label(self.box, text="Wavelength [nm]:")
+        self.wavelength_label = tk.Label(self.box, text="Wavelength [nm]:", font=font)
         self.wavelength_label.grid(row=0, column=5, padx=10, pady=10, sticky="e")
 
         # wavelength selection drop-down
         self.selected_wavelength = tk.StringVar()
-        wavelength_options = sorted(["determine wavelength", 450, 976, 1976], key=lambda x: (isinstance(x, str), x))
-        self.wavelength_menu = ttk.Combobox(self.box, textvariable=self.selected_wavelength, values=wavelength_options, width=35)
+        wavelength_options = ["determine wavelength"] + sorted(self.current_values)
+        self.wavelength_menu = ttk.Combobox(self.box, textvariable=self.selected_wavelength, values=wavelength_options, width=22, font=font)
         self.wavelength_menu.grid(row=0, column=6, padx=10, pady=10, sticky="w")
         # self.wavelength_menu.set("Enter wavelength or select one")
 
@@ -136,15 +142,15 @@ class PowerMeterApp:
         self.wavelength_menu.bind("<FocusOut>", self.on_wavelength_entered)
 
         # firmware version label
-        self.firmware_label = tk.Label(self.root, text="", font=self.big_font)
+        self.firmware_label = tk.Label(self.root, text="", font=font)
         self.firmware_label.grid(row=3, column=0, columnspan=3, padx=25, pady=10, sticky="w")
 
         self.terminal = tk.Frame(self.root)
         self.terminal.grid(row=3, column=0, columnspan=2, padx=25, pady=25, sticky="nsew")
 
-        self.log_text = tk.Text(self.terminal, height=10, width=120, wrap="word")
+        self.log_text = tk.Text(self.terminal, height=10, width=120, wrap="word", font=font)
         self.log_text.grid(column=0, row=0)
-        self.log_text.insert(tk.END, "Log initialized...\n")
+        self.log_text.insert(tk.END, "Logs initialized...\n")
 
         scrollbar = ttk.Scrollbar(self.terminal, orient="vertical", command=self.log_text.yview)
         scrollbar.grid(column=1, row=0, sticky=(tk.N, tk.S))
@@ -167,7 +173,10 @@ class PowerMeterApp:
         """
         Handles when a preset wavelength is selected
         """
-        print(f"Selected wavelength: {self.selected_wavelength.get()}")
+        if self.selected_wavelength.get() == "determine wavelength":
+            print("Wavelength analysis mode selected.")
+        else:
+            print(f"Selected wavelength: {self.selected_wavelength.get()} nm")
 
     def on_wavelength_entered(self, event=None):
         """
@@ -181,13 +190,15 @@ class PowerMeterApp:
                 pass
             else:
                 self.last_selected_wavelength = new_value
+                try:
+                    self.current_values.append(int(new_value))
+                    self.current_values.sort()
 
-                current_values = list(self.wavelength_menu["value"])
-                current_values.append(new_value)
-                current_values.sort(key=lambda x: (isinstance(x, str), x))
+                    self.wavelength_menu["values"] = tuple(["determine wavelength"] + self.current_values)
+                    print(f"User defined wavelength: {self.selected_wavelength.get()} nm")
 
-                self.wavelength_menu["values"] = tuple(current_values)
-                print(f"User defined wavelength: {self.selected_wavelength.get()}")
+                except Exception as e:
+                    print(f"The entered wavelength must be an number !")
 
     def display_data_1(self, data_tuple):
         if data_tuple is None:
