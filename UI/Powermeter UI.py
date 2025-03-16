@@ -9,6 +9,7 @@ import sys
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import ttk, filedialog
+from PIL import Image, ImageTk
 
 
 def load_data():
@@ -53,9 +54,16 @@ class PowerMeterApp:
         self.root = root
         self.root.title("Powermeter UI")
 
+        logo_path = r"C:\Clément PC_t\UL\Session H2025_6\Design III\Powermeter App\RVLABS.png"
+        image = Image.open(logo_path)
+        image = image.resize((400, 200), Image.LANCZOS)
+        self.logo_img = ImageTk.PhotoImage(image)
+
         self.root.rowconfigure(0, weight=0)
         self.root.rowconfigure(1, weight=0)
         self.root.rowconfigure(2, weight=1)
+        self.root.rowconfigure(3, weight=1)
+        self.root.rowconfigure(4, weight=1)
         self.root.columnconfigure(0, weight=1)
         self.root.columnconfigure(1, weight=1)
         self.root.columnconfigure(2, weight=1)
@@ -73,18 +81,24 @@ class PowerMeterApp:
         self.last_selected_wavelength = ""
         self.current_values = [450, 976, 1976]
 
+        # fonts
         font = tkFont.Font(family='Trebuchet MS', size=12)
         font_pw = tkFont.Font(family='Trebuchet MS', size=20)
 
         # setup the power graph
         self.fig_1, self.ax_1 = plt.subplots(figsize=(6, 4))
         self.canvas_1 = FigureCanvasTkAgg(self.fig_1, master=self.root)
-        self.canvas_1.get_tk_widget().grid(row=2, column=0, columnspan=3, padx=5, pady=5, sticky="nsew")
+        self.canvas_1.get_tk_widget().grid(row=2, column=0, columnspan=3, padx=5, pady=15, sticky="nsew")
 
         # setup the position graph
         self.fig_2, self.ax_2 = plt.subplots(figsize=(6, 4))
         self.canvas_2 = FigureCanvasTkAgg(self.fig_2, master=self.root)
-        self.canvas_2.get_tk_widget().grid(row=2, column=3, columnspan=3, padx=5, pady=5, sticky="nsew")
+        self.canvas_2.get_tk_widget().grid(row=2, column=3, columnspan=3, padx=5, pady=15, sticky="nsew")
+        self.ax_2.set_xlabel("Position [mm]")
+        self.ax_2.set_ylabel("Position [mm]")
+        self.ax_2.set_xlim(-6, 6)
+        self.ax_2.set_ylim(-6, 6)
+        self.ax_2.grid(True)
 
         self.box = tk.Frame(self.root)
         self.box.grid(row=0, column=0, columnspan=4, padx=25, pady=10, sticky="nsew")
@@ -98,7 +112,7 @@ class PowerMeterApp:
         # wavelength measurement display
         self.wv_label = tk.Label(self.box, text="Wavelength reading:", font=font_pw)
         self.wv_label.grid(row=1, column=7, padx=15, pady=10, sticky="e")
-        self.wv_measurement_label = tk.Label(self.box, text="--- nm", font=font_pw)
+        self.wv_measurement_label = tk.Label(self.box, text="---- nm", font=font_pw)
         self.wv_measurement_label.grid(row=1, column=8, padx=0, pady=10, sticky="w")
 
         # start button (1,0)
@@ -134,7 +148,6 @@ class PowerMeterApp:
         wavelength_options = ["determine wavelength"] + sorted(self.current_values)
         self.wavelength_menu = ttk.Combobox(self.box, textvariable=self.selected_wavelength, values=wavelength_options, width=22, font=font)
         self.wavelength_menu.grid(row=0, column=6, padx=10, pady=10, sticky="w")
-        # self.wavelength_menu.set("Enter wavelength or select one")
 
         # Bind events for selection or manual entry
         self.wavelength_menu.bind("<<ComboboxSelected>>", self.on_wavelength_selected)
@@ -143,10 +156,10 @@ class PowerMeterApp:
 
         # firmware version label
         self.firmware_label = tk.Label(self.root, text="", font=font)
-        self.firmware_label.grid(row=3, column=0, columnspan=3, padx=25, pady=10, sticky="w")
+        self.firmware_label.grid(row=4, column=0, columnspan=3, padx=25, pady=10, sticky="w")
 
         self.terminal = tk.Frame(self.root)
-        self.terminal.grid(row=3, column=0, columnspan=2, padx=25, pady=25, sticky="nsew")
+        self.terminal.grid(row=3, column=0, columnspan=2, padx=25, pady=15, sticky="nsew")
 
         self.log_text = tk.Text(self.terminal, height=10, width=120, wrap="word", font=font)
         self.log_text.grid(column=0, row=0)
@@ -156,16 +169,25 @@ class PowerMeterApp:
         scrollbar.grid(column=1, row=0, sticky=(tk.N, tk.S))
         self.log_text["yscrollcommand"] = scrollbar.set
 
+        # print logs to terminal
         sys.stdout = TextRedirector(self.log_text)
 
+        # create a Powermeter class instance
         self.device = PowerMeterDevice()
         self.is_refreshing = False          # flag for running process
 
+        # necessary initializations
         self.plot_y_1 = getattr(self, 'plot_y', [])
         self.plot_x_1 = getattr(self, 'plot_x', [])
 
         self.plot_y_2 = getattr(self, 'plot_y', [])
         self.plot_x_2 = getattr(self, 'plot_x', [])
+
+        # RVLABS logo
+        self.logo_frame = tk.Frame(self.root)
+        self.logo_frame.grid(row=3, column=4, padx=25, pady=25, sticky="w")
+        self.logo = tk.Label(self.logo_frame, image=self.logo_img)
+        self.logo.grid(row=1, column=1, sticky="ne")
 
         self.update_loop()  # We update once at least
 
@@ -266,8 +288,10 @@ class PowerMeterApp:
 
         self.ax_1.clear()
         self.ax_1.plot(self.plot_x_1, self.plot_y_1)
-        self.ax_1.set_xlabel('Time')
+        self.ax_1.set_xlabel('Time [s]')
         self.ax_1.set_ylabel('Power (mW)')
+        self.ax_1.grid(True)
+
         self.canvas_1.draw()
 
         if self.is_refreshing:
@@ -303,6 +327,7 @@ class PowerMeterApp:
         self.ax_1.clear()
         self.ax_1.set_xlabel('Time')
         self.ax_1.set_ylabel('Power (mW)')
+        self.ax_1.grid(True)
         self.canvas_1.draw()
 
         # log to terminal
@@ -315,8 +340,13 @@ class PowerMeterApp:
         self.plot_x_2 = []
         self.plot_y_2 = []
         self.ax_2.clear()
-        self.ax_2.set_xlabel('Time')
-        self.ax_2.set_ylabel('Power (mW)')
+
+        self.ax_2.set_xlabel("Position [mm]")
+        self.ax_2.set_ylabel("Position [mm]")
+        self.ax_2.set_xlim(-6, 6)
+        self.ax_2.set_ylim(-6, 6)
+        self.ax_2.grid(True)
+
         self.canvas_2.draw()
 
         # log to terminal
