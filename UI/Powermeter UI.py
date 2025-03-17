@@ -54,9 +54,9 @@ class PowerMeterApp:
         self.root = root
         self.root.title("Powermeter UI")
 
-        logo_path = r"C:\Clément PC_t\UL\Session H2025_6\Design III\Powermeter App\RVLABS.png"
+        logo_path = r"C:\Clément MSI\UL\Session H2025_6\Design III\Code\Powermeter App\RVLABS_logo.png"
         image = Image.open(logo_path)
-        image = image.resize((400, 200), Image.LANCZOS)
+        image = image.resize((300, 150), Image.LANCZOS)
         self.logo_img = ImageTk.PhotoImage(image)
 
         self.app = xl.App(visible=False)
@@ -71,27 +71,27 @@ class PowerMeterApp:
 
         # fonts
         font = tkFont.Font(family='Trebuchet MS', size=12)
-        font_pw = tkFont.Font(family='Trebuchet MS', size=20)
+        font_pw = tkFont.Font(family='Trebuchet MS', size=18)
 
         """ global frames """
 
         # upper global frame
-        self.up_glob_frame = tk.Frame(self.root, highlightbackground="black", highlightthickness=2)
+        self.up_glob_frame = tk.Frame(self.root, background="gray", highlightbackground="black", highlightthickness=2)
         self.up_glob_frame.grid(row=0, column=0, rowspan=2, columnspan=5, padx=25, pady=10, sticky="nsew")
 
         # mid global frame
-        self.mid_glob_frame = tk.Frame(self.root, highlightbackground="black", highlightthickness=2)
+        self.mid_glob_frame = tk.Frame(self.root, background="gray", highlightbackground="black", highlightthickness=2)
         self.mid_glob_frame.grid(row=2, column=0, rowspan=2, columnspan=5, padx=25, pady=10, sticky="nsew")
 
         # lower global frame
-        self.lw_glob_frame = tk.Frame(self.root, highlightbackground="black", highlightthickness=2)
+        self.lw_glob_frame = tk.Frame(self.root, background="gray", highlightbackground="black", highlightthickness=2)
         self.lw_glob_frame.grid(row=4, column=0, rowspan=3, columnspan=5, padx=25, pady=10, sticky="nsew")
 
         """ subglobal frames """
 
         # acquisition frame
         self.acq_frame = tk.Frame(self.up_glob_frame, highlightbackground="black", highlightthickness=2)
-        self.acq_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
+        self.acq_frame.grid(row=0, column=0, columnspan=1, padx=10, pady=10, sticky="nsw")
 
         # measures frame
         self.meas_frame = tk.Frame(self.up_glob_frame, highlightbackground="black", highlightthickness=2)
@@ -107,11 +107,11 @@ class PowerMeterApp:
 
         # logo frame
         self.logo_frame = tk.Frame(self.lw_glob_frame, highlightbackground="black", highlightthickness=2)
-        self.logo_frame.grid(row=0, column=2, columnspan=2, padx=25, pady=10, sticky="nsew")
+        self.logo_frame.grid(row=0, column=2, columnspan=2, padx=10, pady=20, sticky="nsew")
 
         # version frame
         self.vrs_frame = tk.Frame(self.lw_glob_frame, highlightbackground="black", highlightthickness=2)
-        self.vrs_frame.grid(row=2, column=0, padx=15, pady=15, sticky="nsew")
+        self.vrs_frame.grid(row=2, column=0, padx=15, pady=10, sticky="nsew")
 
         """ configure frames """
 
@@ -208,6 +208,7 @@ class PowerMeterApp:
         self.fig_1, self.ax_1 = plt.subplots(figsize=(6, 4))
         self.ax_1.set_xlabel("Temps [s]")
         self.ax_1.set_ylabel("Puissance [mW]")
+        self.ax_1.grid(True)
         self.canvas_1 = FigureCanvasTkAgg(self.fig_1, master=self.graph_frame)
 
         # position graph
@@ -248,7 +249,7 @@ class PowerMeterApp:
         """ term_frame """
 
         # terminal
-        self.log_text = tk.Text(self.term_frame, height=10, width=120, wrap="word", font=font)
+        self.log_text = tk.Text(self.term_frame, height=8, width=120, wrap="word", font=font)
         self.log_text.grid(column=0, row=0, sticky="nsew")
         self.log_text.insert(tk.END, "Journaux d'application initialisés...\n")
 
@@ -268,7 +269,7 @@ class PowerMeterApp:
 
         # firmware version label
         self.firmware_label = tk.Label(self.vrs_frame, text="1.0.0alpha1")
-        self.firmware_label.grid(row=0, column=0, padx=2, pady=2, sticky="w")
+        self.firmware_label.grid(row=0, column=0, padx=20, pady=20, sticky="w")
 
         """ instantiate the UI """
 
