@@ -220,8 +220,8 @@ class PowerMeterApp:
         self.ax_2.grid(True)
 
         # place graphs
-        self.canvas_1.get_tk_widget().grid(row=0, column=0, columnspan=3, padx=5, pady=15, sticky="nsew")
-        self.canvas_2.get_tk_widget().grid(row=0, column=3, columnspan=3, padx=5, pady=15, sticky="nsew")
+        self.canvas_1.get_tk_widget().grid(row=0, column=0, columnspan=3, padx=15, pady=15, sticky="nsew")
+        self.canvas_2.get_tk_widget().grid(row=0, column=3, columnspan=3, padx=15, pady=15, sticky="nsew")
 
         # clear button 1
         self.clear_button_1 = tk.Button(self.graph_frame, text="Effacer le graphique de puissance",
@@ -248,13 +248,13 @@ class PowerMeterApp:
         """ term_frame """
 
         # terminal
-        self.log_text = tk.Text(self.term_frame, height=10, width=80, wrap="word", font=font)
-        self.log_text.grid(column=0, row=0)
-        self.log_text.insert(tk.END, "Logs initialized...\n")
+        self.log_text = tk.Text(self.term_frame, height=10, width=120, wrap="word", font=font)
+        self.log_text.grid(column=0, row=0, sticky="nsew")
+        self.log_text.insert(tk.END, "Journaux d'application initialisés...\n")
 
         # terminal scrollbar
         scrollbar = ttk.Scrollbar(self.term_frame, orient="vertical", command=self.log_text.yview)
-        scrollbar.grid(column=1, row=0, sticky=(tk.N, tk.S))
+        scrollbar.grid(column=1, row=0, sticky="nsew")
         self.log_text["yscrollcommand"] = scrollbar.set
 
         # print logs to terminal
@@ -290,9 +290,9 @@ class PowerMeterApp:
         Handles when a preset wavelength is selected
         """
         if self.selected_wavelength.get() == "déterminer la longueur d'onde":
-            print("Wavelength analysis mode selected.")
+            print("Mode de détermination de la longueur d'onde activé.")
         else:
-            print(f"Selected wavelength: {self.selected_wavelength.get()} nm")
+            print(f"Longueur d'onde choisie: {self.selected_wavelength.get()} nm")
 
     def on_wavelength_entered(self, event=None):
         """
@@ -311,10 +311,10 @@ class PowerMeterApp:
                     self.current_values.sort()
 
                     self.wavelength_menu["values"] = tuple(["déterminer la longueur d'onde"] + self.current_values)
-                    print(f"User defined wavelength: {self.selected_wavelength.get()} nm")
+                    print(f"L'utilisateur a défini la longueur d'onde: {self.selected_wavelength.get()} nm")
 
                 except Exception as e:
-                    print(f"The entered wavelength must be an number !")
+                    print(f"La longueur d'onde entrée manuellement doit être un nombre !")
 
     def display_data_1(self, data_tuple):
         if data_tuple is None:
@@ -332,7 +332,7 @@ class PowerMeterApp:
         self.canvas_1.draw()
 
         # log to terminal
-        print(f"loaded {str(file_path)}")
+        print(f"Fichier chargé: {str(file_path)}")
 
     def display_data_2(self, data_tuple):
         if data_tuple is None:
@@ -350,7 +350,7 @@ class PowerMeterApp:
         self.canvas_2.draw()
 
         # log to terminal
-        print(f"loaded {str(file_path)}")
+        print(f"Fichier chargé: {str(file_path)}")
 
     def click_start(self):
         """
@@ -359,12 +359,12 @@ class PowerMeterApp:
         if not self.is_refreshing:                    # if process is not running
             self.is_refreshing = True                 # set flag as process is running
             self.update_loop()                        # starts the process
-            self.start_button.config(text="Stop")
-            print("Process started !")
+            self.start_button.config(text="Arrêter")
+            print("Processus démarré !")
         else:
             self.is_refreshing = False                # set flag as process not running
-            self.start_button.config(text="Start")
-            print("Process stopped !")
+            self.start_button.config(text="Démarrer")
+            print("Processus arrêté !")
 
     def update_loop(self):
         """
@@ -395,27 +395,27 @@ class PowerMeterApp:
         if self.wavelengths_1 is None or self.power_values_1 is None:
             print("No data to save!")
             return
-
         file_path = filedialog.asksaveasfilename(defaultextension=".csv",
                                                  filetypes=[("CSV Files", "*.csv"), ("Text Files", "*.txt")])
         if not file_path:
             return
-
         try:
             with open(file_path, mode="w", newline="") as file:
                 writer = csv.writer(file)
                 writer.writerow(["Wavelength [nm]", "Power [dB]"])
                 for w, p in zip(self.wavelengths_1, self.power_values_1):
                     writer.writerow([w, p])
-
-            print(f"Data saved successfully to {file_path}")
+            print(f"Données enregistrées à {file_path}")
         except Exception as e:
-            print(f"Error saving file: {e}")
+            print(f"Erreur durant la sauvegarde: {e}")
 
     def click_clear_1(self):
         """
         clears the plot
         """
+        self.wavelengths_1 = None
+        self.power_values_1 = None
+
         self.plot_x_1 = []
         self.plot_y_1 = []
         self.ax_1.clear()
@@ -425,7 +425,7 @@ class PowerMeterApp:
         self.canvas_1.draw()
 
         # log to terminal
-        print("Graph 1 cleared.")
+        print("Graphique de puissance effacé.")
 
     def click_clear_2(self):
         """
@@ -444,7 +444,7 @@ class PowerMeterApp:
         self.canvas_2.draw()
 
         # log to terminal
-        print("Graph 2 cleared.")
+        print("Graphique de position effacé.")
 
 
 class PowerMeterDevice:
