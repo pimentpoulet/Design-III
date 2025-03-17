@@ -59,18 +59,6 @@ class PowerMeterApp:
         image = image.resize((400, 200), Image.LANCZOS)
         self.logo_img = ImageTk.PhotoImage(image)
 
-        self.root.rowconfigure(0, weight=0)
-        self.root.rowconfigure(1, weight=0)
-        self.root.rowconfigure(2, weight=1)
-        self.root.rowconfigure(3, weight=1)
-        self.root.rowconfigure(4, weight=1)
-        self.root.columnconfigure(0, weight=1)
-        self.root.columnconfigure(1, weight=1)
-        self.root.columnconfigure(2, weight=1)
-        self.root.columnconfigure(3, weight=1)
-        self.root.columnconfigure(4, weight=1)
-        self.root.columnconfigure(5, weight=1)
-
         self.app = xl.App(visible=False)
 
         # global variables
@@ -85,92 +73,204 @@ class PowerMeterApp:
         font = tkFont.Font(family='Trebuchet MS', size=12)
         font_pw = tkFont.Font(family='Trebuchet MS', size=20)
 
-        # setup the power graph
-        self.fig_1, self.ax_1 = plt.subplots(figsize=(6, 4))
-        self.canvas_1 = FigureCanvasTkAgg(self.fig_1, master=self.root)
-        self.canvas_1.get_tk_widget().grid(row=2, column=0, columnspan=3, padx=5, pady=15, sticky="nsew")
+        """ global frames """
 
-        # setup the position graph
-        self.fig_2, self.ax_2 = plt.subplots(figsize=(6, 4))
-        self.canvas_2 = FigureCanvasTkAgg(self.fig_2, master=self.root)
-        self.canvas_2.get_tk_widget().grid(row=2, column=3, columnspan=3, padx=5, pady=15, sticky="nsew")
-        self.ax_2.set_xlabel("Position [mm]")
-        self.ax_2.set_ylabel("Position [mm]")
-        self.ax_2.set_xlim(-6, 6)
-        self.ax_2.set_ylim(-6, 6)
-        self.ax_2.grid(True)
+        # upper global frame
+        self.up_glob_frame = tk.Frame(self.root, highlightbackground="black", highlightthickness=2)
+        self.up_glob_frame.grid(row=0, column=0, rowspan=2, columnspan=5, padx=25, pady=10, sticky="nsew")
 
-        self.box = tk.Frame(self.root)
-        self.box.grid(row=0, column=0, columnspan=4, padx=25, pady=10, sticky="nsew")
+        # mid global frame
+        self.mid_glob_frame = tk.Frame(self.root, highlightbackground="black", highlightthickness=2)
+        self.mid_glob_frame.grid(row=2, column=0, rowspan=2, columnspan=5, padx=25, pady=10, sticky="nsew")
 
-        # power measurement display
-        self.power_label = tk.Label(self.box, text="Power reading:", font=font_pw)
-        self.power_label.grid(row=0, column=7, padx=15, pady=10, sticky="e")
-        self.measurement_label = tk.Label(self.box, text="--- mW", font=font_pw)
-        self.measurement_label.grid(row=0, column=8, padx=0, pady=10, sticky="w")
+        # lower global frame
+        self.lw_glob_frame = tk.Frame(self.root, highlightbackground="black", highlightthickness=2)
+        self.lw_glob_frame.grid(row=4, column=0, rowspan=3, columnspan=5, padx=25, pady=10, sticky="nsew")
 
-        # wavelength measurement display
-        self.wv_label = tk.Label(self.box, text="Wavelength reading:", font=font_pw)
-        self.wv_label.grid(row=1, column=7, padx=15, pady=10, sticky="e")
-        self.wv_measurement_label = tk.Label(self.box, text="---- nm", font=font_pw)
-        self.wv_measurement_label.grid(row=1, column=8, padx=0, pady=10, sticky="w")
+        """ subglobal frames """
 
-        # start button (1,0)
-        self.start_button = tk.Button(self.box, text="Start", command=self.click_start, font=font)
-        self.start_button.grid(row=0, column=1, padx=10, pady=10, sticky="ns")
+        # acquisition frame
+        self.acq_frame = tk.Frame(self.up_glob_frame, highlightbackground="black", highlightthickness=2)
+        self.acq_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
 
-        # save button (2,0)
-        self.save_button = tk.Button(self.box, text="Save data…", command=self.save_data, font=font)
-        self.save_button.grid(row=0, column=2, padx=10, pady=10)
+        # measures frame
+        self.meas_frame = tk.Frame(self.up_glob_frame, highlightbackground="black", highlightthickness=2)
+        self.meas_frame.grid(row=0, column=2, columnspan=2, padx=10, pady=10, sticky="nsew")
 
-        # clear button (3,0)
-        self.clear_button_1 = tk.Button(self.box, text="Clear graph 1", command=self.click_clear_1, font=font)
-        self.clear_button_1.grid(row=0, column=4, padx=10, pady=10)
+        # graphs frame
+        self.graph_frame = tk.Frame(self.mid_glob_frame, highlightbackground="black", highlightthickness=2)
+        self.graph_frame.grid(row=0, column=0, rowspan=2, columnspan=5, padx=25, pady=10, sticky="nsew")
 
-        # clear button (3,0)
-        self.clear_button_2 = tk.Button(self.box, text="Clear graph 2", command=self.click_clear_2, font=font)
-        self.clear_button_2.grid(row=1, column=4, padx=10, pady=10)
+        # terminal frame
+        self.term_frame = tk.Frame(self.lw_glob_frame, highlightbackground="black", highlightthickness=2)
+        self.term_frame.grid(row=0, column=0, rowspan=2, columnspan=2, padx=10, pady=10, sticky="nsew")
 
-        # load button 1
-        self.load_button_1 = tk.Button(self.box, text="Load data 1", command=lambda: self.display_data_1(load_data()), font=font)
-        self.load_button_1.grid(row=0, column=3, sticky=tk.W, pady=5)
+        # logo frame
+        self.logo_frame = tk.Frame(self.lw_glob_frame, highlightbackground="black", highlightthickness=2)
+        self.logo_frame.grid(row=0, column=2, columnspan=2, padx=25, pady=10, sticky="nsew")
 
-        # load button 2
-        self.load_button_2 = tk.Button(self.box, text="Load data 2", command=lambda: self.display_data_2(load_data()), font=font)
-        self.load_button_2.grid(row=1, column=3, sticky=tk.W)
+        # version frame
+        self.vrs_frame = tk.Frame(self.lw_glob_frame, highlightbackground="black", highlightthickness=2)
+        self.vrs_frame.grid(row=2, column=0, padx=15, pady=15, sticky="nsew")
 
-        # wavelength label
-        self.wavelength_label = tk.Label(self.box, text="Wavelength [nm]:", font=font)
-        self.wavelength_label.grid(row=0, column=5, padx=10, pady=10, sticky="e")
+        """ configure frames """
+
+        # root
+        self.root.columnconfigure(0, weight=1)
+        self.root.columnconfigure(1, weight=1)
+        self.root.columnconfigure(2, weight=1)
+        self.root.columnconfigure(3, weight=1)
+        self.root.columnconfigure(4, weight=1)
+
+        self.root.rowconfigure(0, weight=1)
+        self.root.rowconfigure(1, weight=1)
+        self.root.rowconfigure(2, weight=1)
+        self.root.rowconfigure(3, weight=1)
+        self.root.rowconfigure(4, weight=1)
+
+        # global frames
+        self.up_glob_frame.columnconfigure(0, weight=1)
+        self.up_glob_frame.columnconfigure(1, weight=1)
+        self.up_glob_frame.columnconfigure(2, weight=1)
+        self.up_glob_frame.columnconfigure(3, weight=1)
+
+        self.up_glob_frame.rowconfigure(0, weight=1)
+        self.up_glob_frame.rowconfigure(1, weight=1)
+        self.up_glob_frame.rowconfigure(2, weight=1)
+
+        self.mid_glob_frame.columnconfigure(0, weight=1)
+        self.mid_glob_frame.columnconfigure(1, weight=1)
+        self.mid_glob_frame.columnconfigure(2, weight=1)
+        self.mid_glob_frame.columnconfigure(3, weight=1)
+
+        self.mid_glob_frame.rowconfigure(0, weight=1)
+        self.mid_glob_frame.rowconfigure(1, weight=1)
+        self.mid_glob_frame.rowconfigure(2, weight=1)
+
+        self.lw_glob_frame.columnconfigure(0, weight=1)
+        self.lw_glob_frame.columnconfigure(1, weight=1)
+        self.lw_glob_frame.columnconfigure(2, weight=1)
+        self.lw_glob_frame.columnconfigure(3, weight=1)
+
+        self.lw_glob_frame.rowconfigure(0, weight=1)
+        self.lw_glob_frame.rowconfigure(1, weight=1)
+        self.lw_glob_frame.rowconfigure(2, weight=1)
+
+        # graph_frame
+        self.graph_frame.columnconfigure(0, weight=1)
+        self.graph_frame.columnconfigure(1, weight=1)
+        self.graph_frame.columnconfigure(2, weight=1)
+        self.graph_frame.columnconfigure(3, weight=1)
+        self.graph_frame.columnconfigure(4, weight=1)
+
+        self.graph_frame.rowconfigure(0, weight=1)
+        self.graph_frame.rowconfigure(1, weight=1)
+
+        """ acq_frame """
+
+        # start button
+        self.start_button = tk.Button(self.acq_frame, text="Démarrer", command=self.click_start, font=font)
+        self.start_button.grid(row=1, column=0, padx=10, pady=10, sticky="we")
 
         # wavelength selection drop-down
         self.selected_wavelength = tk.StringVar()
-        wavelength_options = ["determine wavelength"] + sorted(self.current_values)
-        self.wavelength_menu = ttk.Combobox(self.box, textvariable=self.selected_wavelength, values=wavelength_options, width=22, font=font)
-        self.wavelength_menu.grid(row=0, column=6, padx=10, pady=10, sticky="w")
+        wavelength_options = ["déterminer la longueur d'onde"] + sorted(self.current_values)
+        self.wavelength_menu = ttk.Combobox(self.acq_frame, textvariable=self.selected_wavelength, values=wavelength_options,
+                                            width=30, font=font)
+        self.wavelength_menu.grid(row=0, column=1, columnspan=2, padx=10, pady=10, sticky="w")
 
         # Bind events for selection or manual entry
         self.wavelength_menu.bind("<<ComboboxSelected>>", self.on_wavelength_selected)
         self.wavelength_menu.bind("<Return>", self.on_wavelength_entered)
         self.wavelength_menu.bind("<FocusOut>", self.on_wavelength_entered)
 
-        # firmware version label
-        self.firmware_label = tk.Label(self.root, text="", font=font)
-        self.firmware_label.grid(row=4, column=0, columnspan=3, padx=25, pady=10, sticky="w")
+        # wavelength label
+        self.wavelength_label = tk.Label(self.acq_frame, text="Mode du puissance-mètre [nm]:", font=font)
+        self.wavelength_label.grid(row=0, column=0, padx=10, pady=10, sticky="e")
 
-        self.terminal = tk.Frame(self.root)
-        self.terminal.grid(row=3, column=0, columnspan=2, padx=25, pady=15, sticky="nsew")
+        """ meas_frame """
 
-        self.log_text = tk.Text(self.terminal, height=10, width=120, wrap="word", font=font)
+        # power measurement display
+        self.power_label = tk.Label(self.meas_frame, text="Puissance mesurée [W]:", font=font_pw)
+        self.power_label.grid(row=0, column=1, padx=15, pady=10, sticky="e")
+        self.measurement_label = tk.Label(self.meas_frame, text="---", font=font_pw)
+        self.measurement_label.grid(row=0, column=2, padx=0, pady=10, sticky="w")
+
+        # wavelength measurement display
+        self.wv_label = tk.Label(self.meas_frame, text="Longueur d'onde mesurée [nm]:", font=font_pw)
+        self.wv_label.grid(row=1, column=1, padx=15, pady=10, sticky="e")
+        self.wv_measurement_label = tk.Label(self.meas_frame, text="----", font=font_pw)
+        self.wv_measurement_label.grid(row=1, column=2, padx=0, pady=10, sticky="w")
+
+        """ graph_frame """
+
+        # power graph
+        self.fig_1, self.ax_1 = plt.subplots(figsize=(6, 4))
+        self.ax_1.set_xlabel("Temps [s]")
+        self.ax_1.set_ylabel("Puissance [mW]")
+        self.canvas_1 = FigureCanvasTkAgg(self.fig_1, master=self.graph_frame)
+
+        # position graph
+        self.fig_2, self.ax_2 = plt.subplots(figsize=(4, 4))
+        self.canvas_2 = FigureCanvasTkAgg(self.fig_2, master=self.graph_frame)
+        self.ax_2.set_xlabel("Position [mm]")
+        self.ax_2.set_ylabel("Position [mm]")
+        self.ax_2.set_xlim(-6, 6)
+        self.ax_2.set_ylim(-6, 6)
+        self.ax_2.grid(True)
+
+        # place graphs
+        self.canvas_1.get_tk_widget().grid(row=0, column=0, columnspan=3, padx=5, pady=15, sticky="nsew")
+        self.canvas_2.get_tk_widget().grid(row=0, column=3, columnspan=3, padx=5, pady=15, sticky="nsew")
+
+        # clear button 1
+        self.clear_button_1 = tk.Button(self.graph_frame, text="Effacer le graphique de puissance",
+                                        command=self.click_clear_1,
+                                        font=font)
+        self.clear_button_1.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
+
+        # save button 1
+        self.save_button_1 = tk.Button(self.graph_frame, text="Enregistrer les données de puissance",
+                                       command=self.save_data, font=font)
+        self.save_button_1.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
+
+        # load button 1
+        self.load_button_1 = tk.Button(self.graph_frame, text="Charger des données de puissance",
+                                       command=lambda: self.display_data_1(load_data()), font=font)
+        self.load_button_1.grid(row=1, column=2, padx=10, pady=10, sticky="ew")
+
+        # clear button 2
+        self.clear_button_2 = tk.Button(self.graph_frame, text="Effacer le graphique de position",
+                                        command=self.click_clear_2,
+                                        font=font)
+        self.clear_button_2.grid(row=1, column=3, padx=10, pady=10, sticky="ew")
+
+        """ term_frame """
+
+        # terminal
+        self.log_text = tk.Text(self.term_frame, height=10, width=80, wrap="word", font=font)
         self.log_text.grid(column=0, row=0)
         self.log_text.insert(tk.END, "Logs initialized...\n")
 
-        scrollbar = ttk.Scrollbar(self.terminal, orient="vertical", command=self.log_text.yview)
+        # terminal scrollbar
+        scrollbar = ttk.Scrollbar(self.term_frame, orient="vertical", command=self.log_text.yview)
         scrollbar.grid(column=1, row=0, sticky=(tk.N, tk.S))
         self.log_text["yscrollcommand"] = scrollbar.set
 
         # print logs to terminal
         sys.stdout = TextRedirector(self.log_text)
+
+        """ logo_frame """
+
+        # RVLABS logo
+        self.logo = tk.Label(self.logo_frame, image=self.logo_img)
+        self.logo.grid(row=0, column=0, sticky="ne")
+
+        # firmware version label
+        self.firmware_label = tk.Label(self.vrs_frame, text="1.0.0alpha1")
+        self.firmware_label.grid(row=0, column=0, padx=2, pady=2, sticky="w")
+
+        """ instantiate the UI """
 
         # create a Powermeter class instance
         self.device = PowerMeterDevice()
@@ -183,19 +283,13 @@ class PowerMeterApp:
         self.plot_y_2 = getattr(self, 'plot_y', [])
         self.plot_x_2 = getattr(self, 'plot_x', [])
 
-        # RVLABS logo
-        self.logo_frame = tk.Frame(self.root)
-        self.logo_frame.grid(row=3, column=4, padx=25, pady=25, sticky="w")
-        self.logo = tk.Label(self.logo_frame, image=self.logo_img)
-        self.logo.grid(row=1, column=1, sticky="ne")
-
-        self.update_loop()  # We update once at least
+        # self.update_loop()  # We update once at least
 
     def on_wavelength_selected(self, event=None):
         """
         Handles when a preset wavelength is selected
         """
-        if self.selected_wavelength.get() == "determine wavelength":
+        if self.selected_wavelength.get() == "déterminer la longueur d'onde":
             print("Wavelength analysis mode selected.")
         else:
             print(f"Selected wavelength: {self.selected_wavelength.get()} nm")
@@ -216,7 +310,7 @@ class PowerMeterApp:
                     self.current_values.append(int(new_value))
                     self.current_values.sort()
 
-                    self.wavelength_menu["values"] = tuple(["determine wavelength"] + self.current_values)
+                    self.wavelength_menu["values"] = tuple(["déterminer la longueur d'onde"] + self.current_values)
                     print(f"User defined wavelength: {self.selected_wavelength.get()} nm")
 
                 except Exception as e:
@@ -288,14 +382,14 @@ class PowerMeterApp:
 
         self.ax_1.clear()
         self.ax_1.plot(self.plot_x_1, self.plot_y_1)
-        self.ax_1.set_xlabel('Time [s]')
-        self.ax_1.set_ylabel('Power (mW)')
+        self.ax_1.set_xlabel('Temps [s]')
+        self.ax_1.set_ylabel('Puissance (mW)')
         self.ax_1.grid(True)
 
         self.canvas_1.draw()
 
         if self.is_refreshing:
-            self.root.after(300, self.update_loop)    # recursively calls the update_loop function until is_refreshing=False
+            self.root.after(1000, self.update_loop)    # recursively calls the update_loop function until is_refreshing=False
 
     def save_data(self):
         if self.wavelengths_1 is None or self.power_values_1 is None:
