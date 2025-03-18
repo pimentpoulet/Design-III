@@ -54,7 +54,7 @@ class PowerMeterApp:
         self.root = root
         self.root.title("Powermeter UI")
 
-        logo_path = r"C:\Clément MSI\UL\Session H2025_6\Design III\Code\Powermeter App\RVLABS_logo.png"
+        logo_path = r"C:\Clément PC_t\UL\Session H2025_6\Design III\Powermeter App\RVLABS.png"
         image = Image.open(logo_path)
         image = image.resize((300, 150), Image.LANCZOS)
         self.logo_img = ImageTk.PhotoImage(image)
@@ -91,11 +91,11 @@ class PowerMeterApp:
 
         # acquisition frame
         self.acq_frame = tk.Frame(self.up_glob_frame, highlightbackground="black", highlightthickness=2)
-        self.acq_frame.grid(row=0, column=0, columnspan=1, padx=10, pady=10, sticky="nsw")
+        self.acq_frame.grid(row=0, column=0, columnspan=1, padx=25, pady=10, sticky="nsw")
 
         # measures frame
         self.meas_frame = tk.Frame(self.up_glob_frame, highlightbackground="black", highlightthickness=2)
-        self.meas_frame.grid(row=0, column=2, columnspan=2, padx=10, pady=10, sticky="nsew")
+        self.meas_frame.grid(row=0, column=2, columnspan=2, padx=25, pady=10, sticky="nsew")
 
         # graphs frame
         self.graph_frame = tk.Frame(self.mid_glob_frame, highlightbackground="black", highlightthickness=2)
@@ -103,15 +103,16 @@ class PowerMeterApp:
 
         # terminal frame
         self.term_frame = tk.Frame(self.lw_glob_frame, highlightbackground="black", highlightthickness=2)
-        self.term_frame.grid(row=0, column=0, rowspan=2, columnspan=2, padx=10, pady=10, sticky="nsew")
+        self.term_frame.grid(row=0, column=0, rowspan=2, columnspan=2, padx=25, pady=10, sticky="nsew")
 
         # logo frame
         self.logo_frame = tk.Frame(self.lw_glob_frame, highlightbackground="black", highlightthickness=2)
-        self.logo_frame.grid(row=0, column=2, columnspan=2, padx=10, pady=20, sticky="nsew")
+        self.logo_frame.grid(row=0, column=2, columnspan=2, padx=25, pady=10)
+        self.logo_frame.configure(width=300, height=150)
 
         # version frame
         self.vrs_frame = tk.Frame(self.lw_glob_frame, highlightbackground="black", highlightthickness=2)
-        self.vrs_frame.grid(row=2, column=0, padx=15, pady=10, sticky="nsew")
+        self.vrs_frame.grid(row=2, column=0, padx=25, pady=10, sticky="nsew")
 
         """ configure frames """
 
@@ -205,14 +206,15 @@ class PowerMeterApp:
         """ graph_frame """
 
         # power graph
-        self.fig_1, self.ax_1 = plt.subplots(figsize=(6, 4))
+        self.fig_1, self.ax_1 = plt.subplots(figsize=(6, 5))
+        self.canvas_1 = FigureCanvasTkAgg(self.fig_1, master=self.graph_frame)
         self.ax_1.set_xlabel("Temps [s]")
         self.ax_1.set_ylabel("Puissance [mW]")
+        self.ax_1.set_ylim(-1, 12)
         self.ax_1.grid(True)
-        self.canvas_1 = FigureCanvasTkAgg(self.fig_1, master=self.graph_frame)
 
         # position graph
-        self.fig_2, self.ax_2 = plt.subplots(figsize=(4, 4))
+        self.fig_2, self.ax_2 = plt.subplots(figsize=(5, 5))
         self.canvas_2 = FigureCanvasTkAgg(self.fig_2, master=self.graph_frame)
         self.ax_2.set_xlabel("Position [mm]")
         self.ax_2.set_ylabel("Position [mm]")
@@ -221,8 +223,8 @@ class PowerMeterApp:
         self.ax_2.grid(True)
 
         # place graphs
-        self.canvas_1.get_tk_widget().grid(row=0, column=0, columnspan=3, padx=15, pady=15, sticky="nsew")
-        self.canvas_2.get_tk_widget().grid(row=0, column=3, columnspan=3, padx=15, pady=15, sticky="nsew")
+        self.canvas_1.get_tk_widget().grid(row=0, column=0, columnspan=3, padx=15, pady=10, sticky="nsew")
+        self.canvas_2.get_tk_widget().grid(row=0, column=3, columnspan=2, padx=15, pady=10, sticky="nsew")
 
         # clear button 1
         self.clear_button_1 = tk.Button(self.graph_frame, text="Effacer le graphique de puissance",
@@ -251,7 +253,7 @@ class PowerMeterApp:
         # terminal
         self.log_text = tk.Text(self.term_frame, height=8, width=120, wrap="word", font=font)
         self.log_text.grid(column=0, row=0, sticky="nsew")
-        self.log_text.insert(tk.END, "Journaux d'application initialisés...\n")
+        self.log_text.insert(tk.END, " Journaux d'application initialisés...\n")
 
         # terminal scrollbar
         scrollbar = ttk.Scrollbar(self.term_frame, orient="vertical", command=self.log_text.yview)
@@ -284,16 +286,16 @@ class PowerMeterApp:
         self.plot_y_2 = getattr(self, 'plot_y', [])
         self.plot_x_2 = getattr(self, 'plot_x', [])
 
-        # self.update_loop()  # We update once at least
+        self.update_loop()  # We update once at least
 
     def on_wavelength_selected(self, event=None):
         """
         Handles when a preset wavelength is selected
         """
         if self.selected_wavelength.get() == "déterminer la longueur d'onde":
-            print("Mode de détermination de la longueur d'onde activé.")
+            print(" Mode de détermination de la longueur d'onde activé.")
         else:
-            print(f"Longueur d'onde choisie: {self.selected_wavelength.get()} nm")
+            print(f" Longueur d'onde choisie: {self.selected_wavelength.get()} nm")
 
     def on_wavelength_entered(self, event=None):
         """
@@ -312,10 +314,10 @@ class PowerMeterApp:
                     self.current_values.sort()
 
                     self.wavelength_menu["values"] = tuple(["déterminer la longueur d'onde"] + self.current_values)
-                    print(f"L'utilisateur a défini la longueur d'onde: {self.selected_wavelength.get()} nm")
+                    print(f" L'utilisateur a défini la longueur d'onde: {self.selected_wavelength.get()} nm")
 
                 except Exception as e:
-                    print(f"La longueur d'onde entrée manuellement doit être un nombre !")
+                    print(f" La longueur d'onde entrée manuellement doit être un nombre !")
 
     def display_data_1(self, data_tuple):
         if data_tuple is None:
@@ -333,7 +335,7 @@ class PowerMeterApp:
         self.canvas_1.draw()
 
         # log to terminal
-        print(f"Fichier chargé: {str(file_path)}")
+        print(f" Fichier chargé: {str(file_path)}")
 
     def display_data_2(self, data_tuple):
         if data_tuple is None:
@@ -351,7 +353,7 @@ class PowerMeterApp:
         self.canvas_2.draw()
 
         # log to terminal
-        print(f"Fichier chargé: {str(file_path)}")
+        print(f" Fichier chargé: {str(file_path)}")
 
     def click_start(self):
         """
@@ -361,11 +363,11 @@ class PowerMeterApp:
             self.is_refreshing = True                 # set flag as process is running
             self.update_loop()                        # starts the process
             self.start_button.config(text="Arrêter")
-            print("Processus démarré !")
+            print(" Processus démarré !")
         else:
             self.is_refreshing = False                # set flag as process not running
             self.start_button.config(text="Démarrer")
-            print("Processus arrêté !")
+            print(" Processus arrêté !")
 
     def update_loop(self):
         """
@@ -385,6 +387,7 @@ class PowerMeterApp:
         self.ax_1.plot(self.plot_x_1, self.plot_y_1)
         self.ax_1.set_xlabel('Temps [s]')
         self.ax_1.set_ylabel('Puissance (mW)')
+        self.ax_1.set_ylim(-1, 12)
         self.ax_1.grid(True)
 
         self.canvas_1.draw()
@@ -394,7 +397,7 @@ class PowerMeterApp:
 
     def save_data(self):
         if self.wavelengths_1 is None or self.power_values_1 is None:
-            print("No data to save!")
+            print(" No data to save!")
             return
         file_path = filedialog.asksaveasfilename(defaultextension=".csv",
                                                  filetypes=[("CSV Files", "*.csv"), ("Text Files", "*.txt")])
@@ -406,9 +409,9 @@ class PowerMeterApp:
                 writer.writerow(["Wavelength [nm]", "Power [dB]"])
                 for w, p in zip(self.wavelengths_1, self.power_values_1):
                     writer.writerow([w, p])
-            print(f"Données enregistrées à {file_path}")
+            print(f" Données enregistrées à {file_path}")
         except Exception as e:
-            print(f"Erreur durant la sauvegarde: {e}")
+            print(f" Erreur durant la sauvegarde: {e}")
 
     def click_clear_1(self):
         """
@@ -426,7 +429,7 @@ class PowerMeterApp:
         self.canvas_1.draw()
 
         # log to terminal
-        print("Graphique de puissance effacé.")
+        print(" Graphique de puissance effacé.")
 
     def click_clear_2(self):
         """
@@ -445,7 +448,7 @@ class PowerMeterApp:
         self.canvas_2.draw()
 
         # log to terminal
-        print("Graphique de position effacé.")
+        print(" Graphique de position effacé.")
 
 
 class PowerMeterDevice:
@@ -459,7 +462,7 @@ class PowerMeterDevice:
 
     def get_power_from_device(self):
         if self.debug:
-            self.power = random.randrange(900, 1000, 1) / 100
+            self.power = random.randrange(0, 1000, 1) / 100
         return self.power
 
     def get_firmware_from_device(self):
