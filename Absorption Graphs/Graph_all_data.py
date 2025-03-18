@@ -115,7 +115,7 @@ for material in data:
     material_power_array = np.concatenate((material_power_mW_low, material_power_mW_high), axis=0)
 
     # get absorption curve
-    power_absorption_array = 100 * (material_power_array / source_power_array)
+    power_absorption_array = 100 * (1 - (material_power_array / source_power_array))
 
     plt.clf()
     plt.plot(source_wavelength_array, power_absorption_array)
