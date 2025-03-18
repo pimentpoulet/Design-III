@@ -9,12 +9,19 @@ import sys
 
 
 def main_cal():
-    temp_moys = []
-    temps = []
+    t_min = 20
+    t_max = 150
+    step = 5
+    name = 'gauche'
+    if not os.path.exists("calibration_data"):
+        os.mkdir("calibration_data")
+    os.chdir("calibration_data")
     try:
         # Initialisation de la caméra
-        pm = PowerMeter_calibration(20, 60, 6)
-        for temp in range(20, 25, 5):
+        pm = PowerMeter_calibration(20, 30, 6)
+        temp_moys = np.zeros(((t_max-t_min)//step+1, pm.rows, pm.cols))
+        temps = np.zeros(((t_max-t_min)//step+1))
+        for i, temp in enumerate(range(t_min, t_max+step, step)):
             print(f"Calibration pour {temp}°C")
             input("Appuyez sur une touche lorsque le corps noir est à température\n")
             
@@ -50,22 +57,27 @@ def main_cal():
                         print(f"Unexpected error at frame {frame}: {e}")
                         sleep(1)
                         continue
-            temp_moys.append(pm.get_moy_temp())
-            temps.append(temp)
-            print("Calibration terminée")
+            print(pm.get_moy_temp())
+            # Sauvegarde des données
+            if i != 0 and os.path.exists(f"{name}_temp_diffs.npy"):
+                temp_moys = np.load(f"{name}_temp_diffs.npy")
+            if i != 0 and os.path.exists(f"{name}_temps.npy"):
+                temps = np.load(f"{name}_temps.npy")
+            temp_moys[i,:,:] = pm.get_moy_temp()
+            temps[i] = temp
+            np.save(f"{name}_temp_diffs.npy", temp_moys)
+            np.save(f"{name}_temps.npy", temps)
+            print(temp_moys)
+            print(temps)
+            print("Données sauvegardées")
+            
     except ValueError as e:
         print(f"Erreur lors de la calibration: {e}")
     except Exception as e:
         print(f"Unexpected error during calibration: {e}")
 
-    # Sauvegarde des données
-    if not os.path.exists("calibration_data"):
-        os.mkdir("calibration_data")
-    os.chdir("calibration_data")
-    np.save("temp_diffs.npy", np.array(temp_moys))
-    np.save("temps.npy", np.array(temps))
     os.chdir("..")
-    print("Données sauvegardées")
+    print("Calibration terminée")
 
 
 def main_fit_cal():
@@ -108,8 +120,20 @@ def test_cal(calibration_data: np.ndarray):
             sys.exit(0)
 
 if __name__ == "__main__":
-    #main_cal()
+    main_cal()
     #ca = main_fit_cal()
+    #while True:
+        #try:
+         #   pm = PowerMeter()
+          #  for i in range(32):
+           #     sleep(1/30)
+            #    pm.update_temperature(pm.get_temp())
+                
+            #show_image_opencv(pm.get_moy_temp())
+        #except:
+         #   sleep(1)
+       
+
     
-    ca = np.load("calibration_data/coeffs_range20-20_jump0.0.npy")
-    test_cal(ca)
+    #ca = np.load("calibration_data/coeffs_range20-20_jump0.0.npy")
+    #test_cal(ca)

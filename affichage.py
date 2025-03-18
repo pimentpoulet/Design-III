@@ -4,7 +4,8 @@ import sys
 rows, cols = 24, 32
 def show_image_opencv(image_array):
     """Affiche l'image thermique avec OpenCV en plein écran."""
-    image_array = np.array(image_array, dtype=np.float32).reshape((rows, cols))
+    #image_array = np.array(image_array, dtype=np.float32).reshape((rows, cols))
+    #print(image_array)
 
     # Correction des valeurs invalides
     image_array = np.nan_to_num(image_array, nan=0.0, posinf=255.0, neginf=0.0)
