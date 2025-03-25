@@ -1,6 +1,6 @@
 from mlx90640_evb9064x import *
 from mlx90640 import *
-from calibration_class import *
+# from calibration_class import *
 import numpy as np
 import cv2
 
@@ -20,10 +20,14 @@ class PowerMeter:
         self.coeffs_array = np.ones((5, self.rows, self.cols), dtype=np.float32)
 
     def get_temp(self) -> np.ndarray:
+        # print("tete")
+        # print("Température captée :", temp_array.shape, temp_array.min(), temp_array.max())
         self.dev.get_frame_data()
         temp_amb = self.dev.get_ta() # Compensation de la température ambiante
         emissivity = 1.0
+        # print("emissitvité_pre")
         temp_array = self.dev.calculate_to(emissivity, temp_amb)  # Conversion en températures
+        # print("emissitvité_post")
         return np.array(temp_array).reshape((self.rows, self.cols))
 
     def update_temperature(self, temp_array: np.ndarray):

@@ -77,6 +77,7 @@ def main_fit_cal():
     for i in range(coeffs_array.shape[0]):
         print(coeffs_array[i,:,:])
 
+
 if __name__ == "__main__":
     main_cal()
     main_fit_cal()

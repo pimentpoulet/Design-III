@@ -1,5 +1,5 @@
 import tkinter as tk
-import random
+# import random
 import tkinter.font as tkFont
 import matplotlib.pyplot as plt
 import xlwings as xl
@@ -10,6 +10,8 @@ import sys
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
+from time import sleep
+from powermeter import PowerMeter
 
 
 def load_data():
@@ -173,6 +175,10 @@ class PowerMeterApp:
         self.start_button = tk.Button(self.acq_frame, text="Démarrer", command=self.click_start, font=font)
         self.start_button.grid(row=1, column=0, padx=10, pady=10, sticky="we")
 
+        # start camera button
+        self.start_cam_button = tk.Button(self.acq_frame, text="Démarrer la caméra", command=self.click_start_cam, font=font)
+        self.start_cam_button.grid(row=1, column=1, padx=10, pady=10, sticky="we")
+
         # wavelength selection drop-down
         self.selected_wavelength = tk.StringVar()
         wavelength_options = ["déterminer la longueur d'onde"] + sorted(self.current_values)
@@ -216,11 +222,8 @@ class PowerMeterApp:
         # position graph
         self.fig_2, self.ax_2 = plt.subplots(figsize=(5, 5))
         self.canvas_2 = FigureCanvasTkAgg(self.fig_2, master=self.graph_frame)
-        self.ax_2.set_xlabel("Position [mm]")
-        self.ax_2.set_ylabel("Position [mm]")
-        self.ax_2.set_xlim(-6, 6)
-        self.ax_2.set_ylim(-6, 6)
-        self.ax_2.grid(True)
+        self.ax_2.set_title("Image thermique")
+        self.ax_2.axis("off")
 
         # place graphs
         self.canvas_1.get_tk_widget().grid(row=0, column=0, columnspan=3, padx=15, pady=10, sticky="nsew")
@@ -276,8 +279,11 @@ class PowerMeterApp:
         """ instantiate the UI """
 
         # create a Powermeter class instance
-        self.device = PowerMeterDevice()
-        self.is_refreshing = False          # flag for running process
+        self.pm = PowerMeter()
+
+        # set flags
+        self.is_refreshing = False
+        self.cam_is_refreshing = False
 
         # necessary initializations
         self.plot_y_1 = getattr(self, 'plot_y', [])
@@ -286,7 +292,7 @@ class PowerMeterApp:
         self.plot_y_2 = getattr(self, 'plot_y', [])
         self.plot_x_2 = getattr(self, 'plot_x', [])
 
-        self.update_loop()  # We update once at least
+        # self.update_loop()  # We update once at least
 
     def on_wavelength_selected(self, event=None):
         """
@@ -337,63 +343,96 @@ class PowerMeterApp:
         # log to terminal
         print(f" Fichier chargé: {str(file_path)}")
 
-    def display_data_2(self, data_tuple):
-        if data_tuple is None:
+    def display_data_2(self, camera_data: np.ndarray):
+        print("tutu")
+        if camera_data is None:
             return
-        self.wavelengths_2, self.power_values_2, file_path = data_tuple
 
         self.ax_2.clear()
-        self.ax_2.plot(self.wavelengths_2, self.power_values_2, label="wpcurve", color="blue", linewidth=1)
-        self.ax_2.set_xlabel("Wavelength [nm]")
-        self.ax_2.set_ylabel("Power [dB]")
-        self.ax_2.set_title("OSA data 2")
-        self.ax_2.legend()
-        self.ax_2.grid(True)
+        self.ax_2.imshow(camera_data, cmap="plasma")
+        self.ax_2.set_title("Image thermique")
+        self.ax_2.axis("off")
 
         self.canvas_2.draw()
 
         # log to terminal
-        print(f" Fichier chargé: {str(file_path)}")
+        # print(f" Fichier chargé: {str(file_path)}")
 
     def click_start(self):
         """
         setups the start button, updates the is_refreshing flag and starts data acquisition
         """
-        if not self.is_refreshing:                    # if process is not running
-            self.is_refreshing = True                 # set flag as process is running
-            self.update_loop()                        # starts the process
+        if not self.is_refreshing:
+            self.is_refreshing = True
+            self.update_loop()
             self.start_button.config(text="Arrêter")
             print(" Processus démarré !")
         else:
-            self.is_refreshing = False                # set flag as process not running
+            self.is_refreshing = False
             self.start_button.config(text="Démarrer")
             print(" Processus arrêté !")
+
+    def click_start_cam(self):
+        """
+        setups the start camera button, updates the cam_is_refreshing flag and starts camera data acquisition
+        """
+        if not self.cam_is_refreshing:
+            self.cam_is_refreshing = True
+            self.start_cam_button.config(text="Arrêter la caméra")
+            self.update_cam()
+            print(" Caméra démarrée !")
+        else:
+            self.cam_is_refreshing = False
+            self.start_cam_button.config(text="Démarrer la caméra")
+            print(" Caméra arrêtée !")
 
     def update_loop(self):
         """
         updates the plot every 300 ms
         """
-        self.device.update_from_device()
+        if False:
+            self.device.update_from_device()
 
-        power = self.device.power
-        self.measurement_label.config(text=f"{power:.2f} mW")
+            power = self.device.power
+            self.measurement_label.config(text=f"{power:.2f} mW")
 
-        # Update plot
-        last = len(self.plot_x_1) if hasattr(self, 'plot_x_1') else 0
-        self.plot_x_1.append(last)
-        self.plot_y_1.append(power)
+            # Update plot
+            last = len(self.plot_x_1) if hasattr(self, 'plot_x_1') else 0
+            self.plot_x_1.append(last)
+            self.plot_y_1.append(power)
 
-        self.ax_1.clear()
-        self.ax_1.plot(self.plot_x_1, self.plot_y_1)
-        self.ax_1.set_xlabel('Temps [s]')
-        self.ax_1.set_ylabel('Puissance (mW)')
-        self.ax_1.set_ylim(-1, 12)
-        self.ax_1.grid(True)
+            self.ax_1.clear()
+            self.ax_1.plot(self.plot_x_1, self.plot_y_1)
+            self.ax_1.set_xlabel('Temps [s]')
+            self.ax_1.set_ylabel('Puissance (mW)')
+            self.ax_1.set_ylim(-1, 12)
+            self.ax_1.grid(True)
 
-        self.canvas_1.draw()
+            self.canvas_1.draw()
 
-        if self.is_refreshing:
-            self.root.after(1000, self.update_loop)    # recursively calls the update_loop function until is_refreshing=False
+            if self.is_refreshing:
+                self.root.after(1000, self.update_loop)    # recursively calls the update_loop function until is_refreshing=False
+        pass
+
+    def update_cam(self):
+        """
+        updates the camera plot
+        """
+        if self.cam_is_refreshing:
+            try:
+                camera_data = self.pm.get_temp()
+                print("Température captée :", camera_data.shape, camera_data.min(), camera_data.max())
+                
+                self.ax_2.clear()
+                self.ax_2.imshow(camera_data, cmap="plasma")
+                self.ax_2.set_title("Image thermique")
+                self.ax_2.axis("off")
+                self.canvas_2.draw()
+                
+            except Exception as e:
+                print(f"Erreur lors de la mise à jour de la caméra : {e}")
+            
+            self.root.after(1000, self.update_cam)
 
     def save_data(self):
         if self.wavelengths_1 is None or self.power_values_1 is None:
@@ -449,42 +488,6 @@ class PowerMeterApp:
 
         # log to terminal
         print(" Graphique de position effacé.")
-
-
-class PowerMeterDevice:
-    debug = True
-
-    def __init__(self):
-        self.power = 0
-        self.wavelength = 1064
-        self.firmware = None
-        self.temperature = None
-
-    def get_power_from_device(self):
-        if self.debug:
-            self.power = random.randrange(0, 1000, 1) / 100
-        return self.power
-
-    def get_firmware_from_device(self):
-        if self.debug:
-            self.firmware = "1.0.0alpha1"
-        return self.firmware
-
-    def get_temperature_from_device(self):
-        if self.debug:
-            self.temperature = random.randrange(70, 73, 1)
-        return self.temperature
-
-    def get_wavelength_from_device(self):
-        if self.debug:
-            pass
-        return self.wavelength
-
-    def update_from_device(self):
-        self.get_power_from_device()
-        self.get_firmware_from_device()
-        self.get_temperature_from_device()
-        self.get_wavelength_from_device()
 
 
 if __name__ == "__main__":
