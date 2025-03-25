@@ -55,13 +55,14 @@ class PowerMeterApp:
 
         self.root = root
         self.root.title("Powermeter UI")
-
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        
         logo_path = r"C:\Clément PC_t\UL\Session H2025_6\Design III\Powermeter App\RVLABS.png"
         image = Image.open(logo_path)
         image = image.resize((300, 150), Image.LANCZOS)
         self.logo_img = ImageTk.PhotoImage(image)
 
-        self.app = xl.App(visible=False)
+        self.app = xl.App(visible=False, add_book=False)
 
         # global variables
         self.wavelengths_1 = None
@@ -416,12 +417,12 @@ class PowerMeterApp:
 
     def update_cam(self):
         """
-        updates the camera plot
+        updates the camera plot every 100 ms
         """
         if self.cam_is_refreshing:
             try:
                 camera_data = self.pm.get_temp()
-                print("Température captée :", camera_data.shape, camera_data.min(), camera_data.max())
+                # print("Température captée :", camera_data.shape, camera_data.min(), camera_data.max())
                 
                 self.ax_2.clear()
                 self.ax_2.imshow(camera_data, cmap="plasma")
@@ -432,7 +433,7 @@ class PowerMeterApp:
             except Exception as e:
                 print(f"Erreur lors de la mise à jour de la caméra : {e}")
             
-            self.root.after(1000, self.update_cam)
+            self.root.after(100, self.update_cam)
 
     def save_data(self):
         if self.wavelengths_1 is None or self.power_values_1 is None:
@@ -488,6 +489,14 @@ class PowerMeterApp:
 
         # log to terminal
         print(" Graphique de position effacé.")
+
+    def on_closing(self):
+        print("Closing the application...")
+        self.is_refreshing = False
+        self.cam_is_refreshing = False
+        self.app.quit()  # If xlwings app is used, close it
+        self.root.destroy()
+        sys.exit()  # Forcefully terminate the script
 
 
 if __name__ == "__main__":
