@@ -9,7 +9,6 @@ import sys
 
 
 def main_cal():
-    # print("toto")
     t_min = 20
     t_max = 150
     step = 5

@@ -1,5 +1,4 @@
 import tkinter as tk
-# import random
 import tkinter.font as tkFont
 import matplotlib.pyplot as plt
 import xlwings as xl
@@ -18,7 +17,6 @@ def load_data():
     file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
     if not file_path:
         return None
-
     try:
         wb = xl.Book(file_path)
         sheet = wb.sheets[0]
@@ -37,7 +35,7 @@ def print_grid_info(root):
         if info:
             print(f"Widget: {child}, Row: {info['row']}, Column: {info['column']}")
 
-
+"""
 class TextRedirector:
     def __init__(self, text_widget):
         self.text_widget = text_widget
@@ -48,7 +46,7 @@ class TextRedirector:
 
     def flush(self):
         pass
-
+"""
 
 class PowerMeterApp:
     def __init__(self, root):
@@ -56,8 +54,8 @@ class PowerMeterApp:
         self.root = root
         self.root.title("Powermeter UI")
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-        
-        logo_path = r"C:\Clément PC_t\UL\Session H2025_6\Design III\Powermeter App\RVLABS.png"
+
+        logo_path = r"C:\Clément MSI\UL\Session H2025_6\Design III\Design-III\UI\RVLABS_logo.png"
         image = Image.open(logo_path)
         image = image.resize((300, 150), Image.LANCZOS)
         self.logo_img = ImageTk.PhotoImage(image)
@@ -265,7 +263,7 @@ class PowerMeterApp:
         self.log_text["yscrollcommand"] = scrollbar.set
 
         # print logs to terminal
-        sys.stdout = TextRedirector(self.log_text)
+        # sys.stdout = TextRedirector(self.log_text)
 
         """ logo_frame """
 
@@ -377,15 +375,23 @@ class PowerMeterApp:
         """
         setups the start camera button, updates the cam_is_refreshing flag and starts camera data acquisition
         """
-        if not self.cam_is_refreshing:
-            self.cam_is_refreshing = True
-            self.start_cam_button.config(text="Arrêter la caméra")
-            self.update_cam()
-            print(" Caméra démarrée !")
-        else:
-            self.cam_is_refreshing = False
-            self.start_cam_button.config(text="Démarrer la caméra")
-            print(" Caméra arrêtée !")
+        if self.pm.dev is not None:
+            if not self.cam_is_refreshing:
+                self.cam_is_refreshing = True
+                self.start_cam_button.config(text="Arrêter la caméra")
+                self.update_cam()
+                print(" Caméra démarrée !")
+            else:
+                self.cam_is_refreshing = False
+                self.start_cam_button.config(text="Démarrer la caméra")
+                print(" Caméra arrêtée !")
+        else:               
+            self.ax_2.clear()
+            self.ax_2.imshow(np.zeros((self.pm.rows, self.pm.cols), dtype=np.float32), cmap="plasma")
+            self.ax_2.set_title("Image thermique")
+            self.ax_2.axis("off")
+            self.canvas_2.draw()
+            print(" La caméra n'est pas disponible.")
 
     def update_loop(self):
         """
@@ -422,18 +428,15 @@ class PowerMeterApp:
         if self.cam_is_refreshing:
             try:
                 camera_data = self.pm.get_temp()
-                # print("Température captée :", camera_data.shape, camera_data.min(), camera_data.max())
-                
+                print(camera_data)
                 self.ax_2.clear()
                 self.ax_2.imshow(camera_data, cmap="plasma")
                 self.ax_2.set_title("Image thermique")
                 self.ax_2.axis("off")
                 self.canvas_2.draw()
-                
+                self.root.after(32, self.update_cam)
             except Exception as e:
                 print(f"Erreur lors de la mise à jour de la caméra : {e}")
-            
-            self.root.after(100, self.update_cam)
 
     def save_data(self):
         if self.wavelengths_1 is None or self.power_values_1 is None:
@@ -491,15 +494,16 @@ class PowerMeterApp:
         print(" Graphique de position effacé.")
 
     def on_closing(self):
-        print("Closing the application...")
-        self.is_refreshing = False
-        self.cam_is_refreshing = False
-        self.app.quit()  # If xlwings app is used, close it
-        self.root.destroy()
-        sys.exit()  # Forcefully terminate the script
+        print(" Closing the application...")
+        try:
+            self.pm.dev.i2c_tear_down()
+            self.app.quit()
+            self.root.destroy()
+        except Exception as e:
+            print(f" Error closing the application: {e}")
 
 
-if __name__ == "__main__":
+if __name__== "__main__":
     root = tk.Tk()
     app = PowerMeterApp(root)
     root.mainloop()

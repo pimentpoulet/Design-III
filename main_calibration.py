@@ -49,7 +49,7 @@ def main_cal():
     np.save("temps.npy", np.array(temps))
     os.chdir("..")
     print("Données sauvegardées")
-    
+
 
 def main_fit_cal():
     # Chargement des données
