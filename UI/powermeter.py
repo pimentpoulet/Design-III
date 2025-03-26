@@ -159,6 +159,6 @@ class PowerMeter:
         """
         if self.dev is not None:
             try:
-                self.dev.close()
+                self.dev.i2c_tear_down()
             except Exception as e:
                 print(f"Erreur lors de la fermeture de la connexion I2C : {e}")

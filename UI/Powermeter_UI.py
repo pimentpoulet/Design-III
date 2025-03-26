@@ -55,7 +55,7 @@ class PowerMeterApp:
         self.root.title("Powermeter UI")
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        logo_path = r"C:\Clément MSI\UL\Session H2025_6\Design III\Design-III\UI\RVLABS_logo.png"
+        logo_path = r"C:\Clément PC_t\UL\Session H2025_6\Design III\Powermeter App\Design-III\UI\RVLABS_logo.png"
         image = Image.open(logo_path)
         image = image.resize((300, 150), Image.LANCZOS)
         self.logo_img = ImageTk.PhotoImage(image)
@@ -494,13 +494,20 @@ class PowerMeterApp:
         print(" Graphique de position effacé.")
 
     def on_closing(self):
-        print(" Closing the application...")
+        print(" Closing the application...")        
         try:
-            self.pm.dev.i2c_tear_down()
+            self.is_refreshing = False
+            self.cam_is_refreshing = False
+            if self.pm is not None:
+                self.pm.cleanup()
             self.app.quit()
+            self.root.quit()
             self.root.destroy()
+            # self.pm.dev.i2c_tear_down()
         except Exception as e:
             print(f" Error closing the application: {e}")
+        finally:
+            sys.exit(0)
 
 
 if __name__== "__main__":
