@@ -35,7 +35,7 @@ def print_grid_info(root):
         if info:
             print(f"Widget: {child}, Row: {info['row']}, Column: {info['column']}")
 
-"""
+
 class TextRedirector:
     def __init__(self, text_widget):
         self.text_widget = text_widget
@@ -46,7 +46,7 @@ class TextRedirector:
 
     def flush(self):
         pass
-"""
+
 
 class PowerMeterApp:
     def __init__(self, root):
@@ -55,7 +55,7 @@ class PowerMeterApp:
         self.root.title("Powermeter UI")
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        logo_path = r"C:\Clément PC_t\UL\Session H2025_6\Design III\Powermeter App\Design-III\UI\RVLABS_logo.png"
+        logo_path = r"C:\Clément MSI\UL\Session H2025_6\Design III\Design-III\UI\RVLABS_logo.png"
         image = Image.open(logo_path)
         image = image.resize((300, 150), Image.LANCZOS)
         self.logo_img = ImageTk.PhotoImage(image)
@@ -199,8 +199,8 @@ class PowerMeterApp:
         # power measurement display
         self.power_label = tk.Label(self.meas_frame, text="Puissance mesurée [W]:", font=font_pw)
         self.power_label.grid(row=0, column=1, padx=15, pady=10, sticky="e")
-        self.measurement_label = tk.Label(self.meas_frame, text="---", font=font_pw)
-        self.measurement_label.grid(row=0, column=2, padx=0, pady=10, sticky="w")
+        self.pw_measurement_label = tk.Label(self.meas_frame, text="---", font=font_pw)
+        self.pw_measurement_label.grid(row=0, column=2, padx=0, pady=10, sticky="w")
 
         # wavelength measurement display
         self.wv_label = tk.Label(self.meas_frame, text="Longueur d'onde mesurée [nm]:", font=font_pw)
@@ -263,7 +263,7 @@ class PowerMeterApp:
         self.log_text["yscrollcommand"] = scrollbar.set
 
         # print logs to terminal
-        # sys.stdout = TextRedirector(self.log_text)
+        sys.stdout = TextRedirector(self.log_text)
 
         """ logo_frame """
 
@@ -327,8 +327,8 @@ class PowerMeterApp:
     def display_data_1(self, data_tuple):
         if data_tuple is None:
             return
-        self.wavelengths_1, self.power_values_1, file_path = data_tuple
 
+        self.wavelengths_1, self.power_values_1, file_path = data_tuple
         self.ax_1.clear()
         self.ax_1.plot(self.wavelengths_1, self.power_values_1, label="wpcurve", color="blue", linewidth=1)
         self.ax_1.set_xlabel("Wavelength [nm]")
@@ -361,15 +361,28 @@ class PowerMeterApp:
         """
         setups the start button, updates the is_refreshing flag and starts data acquisition
         """
-        if not self.is_refreshing:
-            self.is_refreshing = True
-            self.update_loop()
-            self.start_button.config(text="Arrêter")
-            print(" Processus démarré !")
+        if self.pm.dev is not None:
+            if not self.cam_is_refreshing:
+                self.cam_is_refreshing = True
+                self.update_loop(test=False)
+                self.update_cam()
+                self.start_button.config(text="Arrêter")
+                print(" Processus démarré !")
+            else:
+                self.cam_is_refreshing = False
+                self.start_button.config(text="Démarrer")
+                print(" Processus arrêté !")
         else:
-            self.is_refreshing = False
-            self.start_button.config(text="Démarrer")
-            print(" Processus arrêté !")
+            if not self.cam_is_refreshing:
+                self.cam_is_refreshing = True
+                self.update_loop(test=True)
+                self.update_cam()
+                self.start_button.config(text="Arrêter")
+                print(" Test démarré !")
+            else:
+                self.cam_is_refreshing = False
+                self.start_button.config(text="Démarrer")
+                print(" Test arrêté !")
 
     def click_start_cam(self):
         """
@@ -393,33 +406,50 @@ class PowerMeterApp:
             self.canvas_2.draw()
             print(" La caméra n'est pas disponible.")
 
-    def update_loop(self):
+    def update_loop(self, test=False):
         """
         updates the plot every 300 ms
         """
-        if False:
-            self.device.update_from_device()
+        if self.cam_is_refreshing:
+            if not test:
+                try:
+                    mean_temp = np.mean(self.pm.get_temp())
+                    last = len(self.plot_x_1) if hasattr(self, 'plot_x_1') else 0
 
-            power = self.device.power
-            self.measurement_label.config(text=f"{power:.2f} mW")
+                    self.plot_x_1.append(last / 5)
+                    self.plot_y_1.append(mean_temp)
+                    self.ax_1.clear()
+                    self.ax_1.plot(self.plot_x_1, self.plot_y_1)
+                    self.ax_1.set_xlabel('Temps [s]')
+                    self.ax_1.set_ylabel('Puissance (mW)')
+                    self.ax_1.grid(True)
 
-            # Update plot
-            last = len(self.plot_x_1) if hasattr(self, 'plot_x_1') else 0
-            self.plot_x_1.append(last)
-            self.plot_y_1.append(power)
+                    self.canvas_1.draw()
 
-            self.ax_1.clear()
-            self.ax_1.plot(self.plot_x_1, self.plot_y_1)
-            self.ax_1.set_xlabel('Temps [s]')
-            self.ax_1.set_ylabel('Puissance (mW)')
-            self.ax_1.set_ylim(-1, 12)
-            self.ax_1.grid(True)
+                    self.pw_measurement_label.config(text=f"{mean_temp:.2f} mW")
 
-            self.canvas_1.draw()
+                    self.root.after(100, lambda: self.update_loop(test=False))
+                except Exception as e:
+                    print(f" Erreur lors de la prise de mesure: {e}.")
+            else:
+                try:
+                    mean_test_temp = self.pm.get_test_moy_temp()
+                    last = len(self.plot_x_1) if hasattr(self, 'plot_x_1') else 0
 
-            if self.is_refreshing:
-                self.root.after(1000, self.update_loop)    # recursively calls the update_loop function until is_refreshing=False
-        pass
+                    self.plot_x_1.append(last / 5)
+                    self.plot_y_1.append(mean_test_temp)
+                    self.ax_1.clear()
+                    self.ax_1.plot(self.plot_x_1, self.plot_y_1)
+                    self.ax_1.set_xlabel('Temps [s]')
+                    self.ax_1.set_ylabel('Puissance (mW)')
+                    self.ax_1.grid(True)
+
+                    self.canvas_1.draw()
+
+                    self.pw_measurement_label.config(text=f"{mean_test_temp:.2f} mW")
+                    self.root.after(100, lambda: self.update_loop(test=True))
+                except Exception as e:
+                    print(f" Erreur lors de la génération de données de test: {e}.")
 
     def update_cam(self):
         """
@@ -428,7 +458,6 @@ class PowerMeterApp:
         if self.cam_is_refreshing:
             try:
                 camera_data = self.pm.get_temp()
-                print(camera_data)
                 self.ax_2.clear()
                 self.ax_2.imshow(camera_data, cmap="plasma")
                 self.ax_2.set_title("Image thermique")
@@ -436,11 +465,11 @@ class PowerMeterApp:
                 self.canvas_2.draw()
                 self.root.after(32, self.update_cam)
             except Exception as e:
-                print(f"Erreur lors de la mise à jour de la caméra : {e}")
+                print(f"Erreur lors de la mise à jour de la caméra: {e}.")
 
     def save_data(self):
         if self.wavelengths_1 is None or self.power_values_1 is None:
-            print(" No data to save!")
+            print(" Aucune donnée à enregistrer !")
             return
         file_path = filedialog.asksaveasfilename(defaultextension=".csv",
                                                  filetypes=[("CSV Files", "*.csv"), ("Text Files", "*.txt")])
@@ -503,7 +532,6 @@ class PowerMeterApp:
             self.app.quit()
             self.root.quit()
             self.root.destroy()
-            # self.pm.dev.i2c_tear_down()
         except Exception as e:
             print(f" Error closing the application: {e}")
         finally:

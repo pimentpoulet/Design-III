@@ -1,0 +1,87 @@
+import xlwings as xl
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+
+from scipy.signal import butter, filtfilt
+from pathlib import Path
+
+
+def butter_lowpass_filter(data, cutoff=0.05, order=3):
+    b, a = butter(order, cutoff, btype='lowpass')
+    return filtfilt(b, a, data)
+
+
+matplotlib.use("TkAgg")
+data_path = Path(r"C:\Clément MSI\UL\Session H2025_6\Design III\Design-III\Absorption Graphs\Plaques_Alexandre.csv")
+
+plt.rcParams.update({
+    "axes.labelsize": 18,    # Axis labels
+    "xtick.labelsize": 16,   # X-axis tick labels
+    "ytick.labelsize": 16,   # Y-axis tick labels
+    "legend.fontsize": 16    # Legend
+})
+
+app = xl.App(visible=False)
+
+wb_data = xl.Book(data_path)
+data_sheet = wb_data.sheets[0]
+raw_data = data_sheet["A3:A2253"].options(np.array).value
+split_arr = np.char.split(raw_data, ',')
+
+wv_6 = np.array([x[0] for x in split_arr], dtype=float)
+wv_5 = np.array([x[2] for x in split_arr], dtype=float)
+wv_4 = np.array([x[4] for x in split_arr], dtype=float)
+wv_3 = np.array([x[6] for x in split_arr], dtype=float)
+wv_n = np.array([x[8] for x in split_arr], dtype=float)
+
+a_6 = 1.0 - np.array([x[1] for x in split_arr], dtype=float)
+a_5 = 1.0 - np.array([x[3] for x in split_arr], dtype=float)
+a_4 = 1.0 - np.array([x[5] for x in split_arr], dtype=float)
+a_3 = 1.0 - np.array([x[7] for x in split_arr], dtype=float)
+a_n = 1.0 - np.array([x[9] for x in split_arr], dtype=float)
+
+plt.plot(wv_6, a_6, label="plaque #6")
+plt.plot(wv_5, a_5, label="plaque #5")
+plt.plot(wv_4, a_4, label="plaque #4")
+plt.plot(wv_3, a_3, label="plaque #3")
+plt.plot(wv_n, a_n, label="plaque n")
+plt.xlabel("Longueur d'onde [nm]")
+plt.ylabel("Absorptivité [%]")
+plt.grid(True)
+plt.legend(loc="lower left")
+plt.show()
+
+# 6/5 -> 6/n
+r_6_5 = butter_lowpass_filter((a_6 / a_5))
+r_6_4 = butter_lowpass_filter((a_6 / a_4))
+r_6_3 = butter_lowpass_filter((a_6 / a_3))
+r_6_n = butter_lowpass_filter((a_6 / a_n))
+
+# 5/4 -> 5/n
+r_5_4 = butter_lowpass_filter((a_5 / a_4))
+r_5_3 = butter_lowpass_filter((a_5 / a_3))
+r_5_n = butter_lowpass_filter((a_5 / a_n))
+
+# 4/3 -> 4/n
+r_4_3 = butter_lowpass_filter((a_4 / a_3))
+r_4_n = butter_lowpass_filter((a_4 / a_n))
+
+# 3/n
+r_3_n = butter_lowpass_filter((a_3 / a_n))
+
+plt.plot(wv_6, r_6_5, label="r_6_5")
+plt.plot(wv_6, r_6_4, label="r_6_4")
+plt.plot(wv_6, r_6_3, label="r_6_3")
+plt.plot(wv_6, r_6_n, label="r_6_n")
+plt.plot(wv_6, r_5_4, label="r_5_4")
+plt.plot(wv_6, r_5_3, label="r_5_3")
+plt.plot(wv_6, r_5_n, label="r_5_n")
+plt.plot(wv_6, r_4_3, label="r_4_3")
+plt.plot(wv_6, r_4_n, label="r_4_n")
+plt.plot(wv_6, r_3_n, label="r_3_n")
+plt.xlabel("Longueur d'onde [nm]")
+plt.ylabel("Ratio des absorptivités")
+plt.grid(True)
+plt.legend(loc="center right")
+plt.show()

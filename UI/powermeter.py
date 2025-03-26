@@ -162,3 +162,9 @@ class PowerMeter:
                 self.dev.i2c_tear_down()
             except Exception as e:
                 print(f"Erreur lors de la fermeture de la connexion I2C : {e}")
+
+    def get_test_moy_temp(self):
+        """
+        Retourne une valeur moyenne de températures aléatoires
+        """
+        return np.mean(25.0 + 20 * np.random.rand(self.rows, self.cols))
