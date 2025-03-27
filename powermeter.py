@@ -3,6 +3,7 @@ from mlx90640 import *
 from calibration_class import *
 import numpy as np
 import cv2
+from scipy.optimize import curve_fit
 
 
 class PowerMeter:
@@ -91,16 +92,36 @@ class PowerMeter:
     def checkers_grid(self, temp, sq_size, odd_even):
         if odd_even not in (0, 1):
             raise ValueError('odd_even must be 0 or 1')
-        grid = np.zeroslike(temp)
+        grid = np.zeros_like(temp)
+        grid[:,:] = np.nan
         ind = np.indices(temp.shape)
         grid[(ind[0] // sq_size + ind[1] // sq_size) % 2 == odd_even] = temp
         return grid
+    
+
+    def find_non_nan_coord(self, grid):
+        return np.where(~np.isnan(grid))
+
+
+    def fit_2Dgauss(self, grid):
+        a, b = self.find_max_temp_index()
+        x, y = self.find_non_nan_coord(grid)
+        to_fit = grid[x, y]
+        params, cov = curve_fit(lambda i, j, k, amp, sigma: 
+                                k+ amp*np.exp(-((i-a)**2 + (j-b)**2) / (sigma**2))
+                                ,x
+                                ,y
+                                ,to_fit
+                                ,p0=[1, 1, 1])
+        return params, cov
 
 
     def get_wavelength(self) -> float:
         temp = self.get_moy_temp()
         grid1 = self.checkers_grid(temp, 2, 0)
         grid2 = self.checkers_grid(temp, 2, 1)
+        params1, cov1 = self.fit_2Dgauss(grid1)
+        params2, cov2 = self.fit_2Dgauss(grid2)
         pass
 
 
