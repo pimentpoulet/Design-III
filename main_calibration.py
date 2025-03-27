@@ -49,7 +49,7 @@ def main_cal():
     np.save("temps.npy", np.array(temps))
     os.chdir("..")
     print("Données sauvegardées")
-    
+
 
 def main_fit_cal():
     # Chargement des données
@@ -76,6 +76,7 @@ def main_fit_cal():
     print("Coefficients sauvegardés")
     for i in range(coeffs_array.shape[0]):
         print(coeffs_array[i,:,:])
+
 
 if __name__ == "__main__":
     main_cal()

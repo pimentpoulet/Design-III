@@ -153,7 +153,7 @@ material_power_array = np.concatenate((material_power_mW_low, material_power_mW_
 # n = 0000
 # axes[0].grid(True)
 # axes[0].plot(material_wavelength_low, material_power_mW_low)
-# axes[0].set_title(f"Puissance réfléchie de la sources aux basses longueurs d'onde pour le matériau #{n}", wrap=True)
+# axes[0].set_title(f"Puissance réfléchie de la source aux basses longueurs d'onde pour le matériau #{n}", wrap=True)
 # axes[0].set_xlabel("Longueur d'onde [nm]")
 # axes[0].set_ylabel("Puissance [mW]")
 

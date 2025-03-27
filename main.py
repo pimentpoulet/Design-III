@@ -28,7 +28,7 @@ def main_cal():
             pm.ref_temp = temp
             # Calibration
             for frame in range(pm.number_of_frames + pm.remove_frames):
-                #print(f"Frame {frame}")
+                # print(f"Frame {frame}")
                 if frame == pm.remove_frames:
                     print("Début de la calibration")
                 if frame >= pm.remove_frames:
@@ -36,7 +36,7 @@ def main_cal():
                         captured_temp = pm.get_temp()
                         pm.update_temperature(captured_temp)
                         show_image_opencv(captured_temp)
-                        #break
+                        # break
                     except ValueError as e:
                         print(f"Erreur de communication avec le capteur à la frame {frame}: {e}")
                         sleep(1)
@@ -48,7 +48,7 @@ def main_cal():
                 else:
                     try:
                         show_image_opencv(pm.get_temp())
-                        #break
+                        # break
                     except ValueError as e:
                         print(f"Erreur de communication avec le capteur à la frame {frame}: {e}")
                         sleep(1)
@@ -81,6 +81,7 @@ def main_cal():
 
 
 def main_fit_cal():
+    # print("tata")
     # Chargement des données
     if not os.path.exists("calibration_data"):
         print("Pas de données de calibration")
@@ -106,6 +107,7 @@ def main_fit_cal():
 
 
 def test_cal(calibration_data: np.ndarray):
+    # print("titi")
     pm = PowerMeter()
     pm.coeffs_array = calibration_data
     while True:
@@ -118,6 +120,7 @@ def test_cal(calibration_data: np.ndarray):
             print("Fermeture détectée. Arrêt du programme...")
             cv2.destroyAllWindows()
             sys.exit(0)
+
 
 if __name__ == "__main__":
     main_cal()
@@ -137,3 +140,4 @@ if __name__ == "__main__":
     
     #ca = np.load("calibration_data/coeffs_range20-20_jump0.0.npy")
     #test_cal(ca)
+    

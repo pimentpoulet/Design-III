@@ -7,11 +7,13 @@ import time
 
 
 # Paramètres de l'image
-rows, cols = 24, 32  # Résolution du capteur MLX90640
-MAX_RETRIES = 5  # Nombre max de tentatives en cas de timeout
+rows, cols = 24, 32    # Résolution du capteur MLX90640
+MAX_RETRIES = 5        # Nombre max de tentatives en cas de timeout
 
 def calculate_centroid(temperature_array):
-    """Calcule le centroïde de la distribution thermique."""
+    """
+    Calcule le centroïde de la distribution thermique
+    """
     total_temp = np.sum(temperature_array)
     if total_temp == 0:
         return (0, 0)
@@ -21,6 +23,7 @@ def calculate_centroid(temperature_array):
     y_centroid = np.sum(y_coords * temperature_array) / total_temp
     
     return (x_centroid, y_centroid)
+
 
 def main():
     print("Initialisation du capteur MLX90640...")
@@ -42,18 +45,18 @@ def main():
 
     moy_diff = np.zeros((rows, cols, 1))  # Initialisation
 
-    pixel_row, pixel_col = 12, 16  # Coordonnées du pixel à surveiller
-    pixel_temps = []  # Liste pour stocker la température du pixel
+    pixel_row, pixel_col = 12, 16    # Coordonnées du pixel à surveiller
+    pixel_temps = []                 # Liste pour stocker la température du pixel
 
     frame_buffer = []
-    buffer_size = 10  # Nombre de frames à moyenner
+    buffer_size = 10    # Nombre de frames à moyenner
 
-    while True:  # Boucle infinie, gérée par OpenCV
+    while True:         # Boucle infinie, gérée par OpenCV
         try:
             dev.get_frame_data()
-            ta = dev.get_ta() - 8.0  # Compensation de la température ambiante
+            ta = dev.get_ta() - 8.0    # Compensation de la température ambiante
             emissivity = 1.0
-            to = dev.calculate_to(emissivity, ta)  # Conversion en températures
+            to = dev.calculate_to(emissivity, ta)    # Conversion en températures
             to_array = np.array(to).reshape((rows, cols))
             to_array *= gain
             to_array += off_set
@@ -65,7 +68,7 @@ def main():
                 frame_buffer.pop(0)
 
             averaged_frame = np.mean(frame_buffer, axis=0)
-            show_image_opencv(averaged_frame)  # Affichage OpenCV
+            show_image_opencv(averaged_frame)    # Affichage OpenCV
 
             # Stocke la température du pixel surveillé
             pixel_temps.append(to_array[pixel_row, pixel_col])
@@ -77,6 +80,7 @@ def main():
         except Exception as e:
             print(f"Erreur : {e}")
             time.sleep(1)
+
 
 if __name__ == "__main__":
     main()
