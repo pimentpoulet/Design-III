@@ -27,8 +27,10 @@ class PowerMeter:
         temp_array = self.dev.calculate_to(emissivity, temp_amb)  # Conversion en températures
         return np.array(temp_array).reshape((self.rows, self.cols))
 
-    def update_temperature(self, temp_array: np.ndarray):
+    def update_temperature(self, temp_array: np.ndarray = None):
         # Catch error
+        if temp_array is None:
+            temp_array = self.get_temp()
         if temp_array.shape != (self.rows, self.cols):
             raise ValueError("The shape of the temperature array is not correct")
         # Enlève la plus vieille valeur et ajoute la nouvelle
