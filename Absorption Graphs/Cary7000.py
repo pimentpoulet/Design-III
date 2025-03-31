@@ -35,11 +35,11 @@ wv_4 = np.array([x[4] for x in split_arr], dtype=float)
 wv_3 = np.array([x[6] for x in split_arr], dtype=float)
 wv_n = np.array([x[8] for x in split_arr], dtype=float)
 
-a_6 = 1.0 - np.array([x[1] for x in split_arr], dtype=float)
-a_5 = 1.0 - np.array([x[3] for x in split_arr], dtype=float)
-a_4 = 1.0 - np.array([x[5] for x in split_arr], dtype=float)
-a_3 = 1.0 - np.array([x[7] for x in split_arr], dtype=float)
-a_n = 1.0 - np.array([x[9] for x in split_arr], dtype=float)
+a_6 = 100.0 - np.array([x[1] for x in split_arr], dtype=float)
+a_5 = 100.0 - np.array([x[3] for x in split_arr], dtype=float)
+a_4 = 100.0 - np.array([x[5] for x in split_arr], dtype=float)
+a_3 = 100.0 - np.array([x[7] for x in split_arr], dtype=float)
+a_n = 100.0 - np.array([x[9] for x in split_arr], dtype=float)
 
 plt.plot(wv_6, a_6, label="plaque #6")
 plt.plot(wv_5, a_5, label="plaque #5")
@@ -50,6 +50,13 @@ plt.xlabel("Longueur d'onde [nm]")
 plt.ylabel("Absorptivité [%]")
 plt.grid(True)
 plt.legend(loc="lower left")
+plt.show()
+
+plt.plot(wv_6, a_n, label="plaque peinturée")
+plt.xlabel("Longueur d'onde [nm]")
+plt.ylabel("Émissivité")
+plt.grid(True)
+plt.legend(loc="upper right")
 plt.show()
 
 # 6/5 -> 6/n
@@ -72,16 +79,37 @@ r_3_n = butter_lowpass_filter((a_3 / a_n))
 
 plt.plot(wv_6, r_6_5, label="r_6_5")
 plt.plot(wv_6, r_6_4, label="r_6_4")
+
 plt.plot(wv_6, r_6_3, label="r_6_3")
-plt.plot(wv_6, r_6_n, label="r_6_n")
 plt.plot(wv_6, r_5_4, label="r_5_4")
 plt.plot(wv_6, r_5_3, label="r_5_3")
-plt.plot(wv_6, r_5_n, label="r_5_n")
 plt.plot(wv_6, r_4_3, label="r_4_3")
-plt.plot(wv_6, r_4_n, label="r_4_n")
-plt.plot(wv_6, r_3_n, label="r_3_n")
 plt.xlabel("Longueur d'onde [nm]")
 plt.ylabel("Ratio des absorptivités")
+plt.grid(True)
+plt.legend(loc="center right")
+plt.show()
+
+# 6-5 -> 6-3
+r_65 = butter_lowpass_filter((a_6 - a_5))
+r_64 = butter_lowpass_filter((a_6 - a_4))
+r_63 = butter_lowpass_filter((a_6 - a_3))
+
+# 5-4 -> 5-3
+r_54 = butter_lowpass_filter((a_5 - a_4))
+r_53 = butter_lowpass_filter((a_5 - a_3))
+
+# 4-3
+r_43 = butter_lowpass_filter((a_4 - a_3))
+
+plt.plot(wv_6, r_65, label="6-5")
+plt.plot(wv_6, r_64, label="6-4")
+plt.plot(wv_6, r_63, label="6-3")
+plt.plot(wv_6, r_54, label="5-4")
+plt.plot(wv_6, r_53, label="5-3")
+plt.plot(wv_6, r_43, label="4-3")
+plt.xlabel("Longueur d'onde [nm]")
+plt.ylabel("Différence des absorptivités [%]")
 plt.grid(True)
 plt.legend(loc="center right")
 plt.show()
