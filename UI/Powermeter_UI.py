@@ -5,6 +5,8 @@ import xlwings as xl
 import numpy as np
 import csv
 import sys
+import os
+import time
 
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import ttk, filedialog
@@ -261,6 +263,11 @@ class PowerMeterApp:
                                         font=font)
         self.clear_button_2.grid(row=1, column=3, padx=10, pady=10, sticky="ew")
 
+        # save button 2
+        self.save_button_2 = tk.Button(self.graph_frame, text="Enregistrer l'image actuelle",
+                                       command=self.save_cam_data, font=font)
+        self.save_button_2.grid(row=1, column=4, padx=10, pady=10, sticky="ew")
+
         """ term_frame """
 
         # terminal
@@ -481,7 +488,7 @@ class PowerMeterApp:
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
                             self.current_save_duration = 0
-                            print(" Fin de l'acquisition de données.")
+                            print(" Fin de la génération de données.")
                             self.start_button.config(text="    Démarrer    ")
 
     def update_cam(self):
@@ -491,9 +498,9 @@ class PowerMeterApp:
         if self.pm.dev is not None:
             if self.cam_is_refreshing:
                 try:
-                    camera_data = self.pm.get_temp()
+                    self.camera_data = self.pm.get_temp()
                     self.ax_2.clear()
-                    self.ax_2.imshow(camera_data, cmap="plasma")
+                    self.ax_2.imshow(self.camera_data, cmap="plasma")
                     self.ax_2.set_title("Image thermique")
                     self.ax_2.axis("off")
                     self.canvas_2.draw()
@@ -538,6 +545,23 @@ class PowerMeterApp:
             print(f" Données enregistrées à {file_path}")
         except Exception as e:
             print(f" Erreur durant la sauvegarde: {e}")
+
+    def save_cam_data(self):
+        """
+        save the current frame of the camera to the saved_test_data folder
+        """
+        if self.pm.dev is not None:
+            if self.cam_is_refreshing:
+                try:
+                    folder_path = r"UI\saved_test_data"
+                    num_files = len([f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))])
+                    save_path = os.path.join(folder_path, f"{time.strftime("%Y_%m_%d")}_{num_files}_camera_data.txt")
+                    np.savetxt(save_path, self.camera_data)
+                    print(f" Image enregistrée !")
+                except Exception as e:
+                    print(f"Erreur lors de la sauvegarde de l'image: {e}.")
+        else:
+            print(" Il n'y a pas d'image à enregistrer !")
 
     def click_clear_1(self):
         """
