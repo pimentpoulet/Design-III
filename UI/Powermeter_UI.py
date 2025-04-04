@@ -82,6 +82,9 @@ class PowerMeterApp:
         font = tkFont.Font(family='Trebuchet MS', size=12)
         font_pw = tkFont.Font(family='Trebuchet MS', size=18)
 
+        # 
+        pre_saving_matrix = np.zeros((10, 10), dtype=np.float32)
+
         """ global frames """
 
         # upper global frame
@@ -555,8 +558,8 @@ class PowerMeterApp:
                 try:
                     folder_path = r"UI\saved_test_data"
                     num_files = len([f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))])
-                    save_path = os.path.join(folder_path, f"{time.strftime("%Y_%m_%d")}_{num_files}_camera_data.txt")
-                    np.savetxt(save_path, self.camera_data)
+                    save_path = os.path.join(folder_path, f"{time.strftime("%Y_%m_%d")}_{num_files}_camera_data.npy")
+                    np.save(save_path, self.camera_data)
                     print(f" Image enregistrée !")
                 except Exception as e:
                     print(f"Erreur lors de la sauvegarde de l'image: {e}.")
