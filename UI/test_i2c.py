@@ -1,8 +1,12 @@
-import pywinusb.hid as hid
-
-# List all connected HID devices (usually USB devices)
-devices = hid.HidDeviceFilter().get_devices()
-
-# Print connected devices
-for device in devices:
-    print(f"Device found: {device.product_name}, Vendor ID: {device.vendor_id}, Product ID: {device.product_id}")
+ def check_connection(self):
+        """
+        checks the camera's connection status
+        """
+        try:
+            self.pm = PowerMeter_test()
+            if self.pm.dev is not None:
+                self.cam_is_connected = True
+            else:
+                self.cam_is_connected = False
+        except Exception as e:
+            print(f" Erreur lors de la connexion avec le capteur: {e}")

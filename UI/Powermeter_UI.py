@@ -7,8 +7,10 @@ import csv
 import sys
 import os
 import time
+import serial
+import serial.tools.list_ports
 
-from pyftdi.i2c import I2cController
+# from pyftdi.i2c import I2cController
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
@@ -28,7 +30,7 @@ def load_data():
         split_arr = np.char.split(raw_data, ',')
         return np.array([x[0] for x in split_arr], dtype=float), np.array([x[1] for x in split_arr], dtype=float), file_path
     except Exception as e:
-        print(f"Error loading data: {e}")
+        print(f" Error loading data: {e}")
         return None
 
 
@@ -36,7 +38,7 @@ def print_grid_info(root):
     for child in root.winfo_children():
         info = child.grid_info()
         if info:
-            print(f"Widget: {child}, Row: {info['row']}, Column: {info['column']}")
+            print(f" Widget: {child}, Row: {info['row']}, Column: {info['column']}")
 
 
 class TextRedirector:
@@ -58,7 +60,7 @@ class PowerMeterApp:
         self.root.title("Powermeter UI")
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        logo_path = r"C:\Clément MSI\UL\Session H2025_6\Design III\Design-III\main\RVLABS_logo.png"
+        logo_path = r"UI\RVLABS_logo.png"
         image = Image.open(logo_path)
         image = image.resize((300, 150), Image.LANCZOS)
         self.logo_img = ImageTk.PhotoImage(image)
@@ -278,7 +280,7 @@ class PowerMeterApp:
         # terminal
         self.log_text = tk.Text(self.term_frame, height=8, width=120, wrap="word", font=font)
         self.log_text.grid(column=0, row=0, sticky="nsew")
-        self.log_text.insert(tk.END, " Journaux d'application initialisés...\n Le puissance-mètre est en mode < Utilisation libre >\n")
+        self.log_text.insert(tk.END, " Journaux d'application initialisés...\n")    # \n Le puissance-mètre est en mode < Utilisation libre >\n")
 
         # terminal scrollbar
         scrollbar = ttk.Scrollbar(self.term_frame, orient="vertical", command=self.log_text.yview)
@@ -298,13 +300,13 @@ class PowerMeterApp:
         self.firmware_label = tk.Label(self.vrs_frame, text="1.0.0alpha1")
         self.firmware_label.grid(row=0, column=0, padx=20, pady=20, sticky="w")
 
-        # create a Powermeter class instance
-        self.pm = PowerMeter_test()
-
-        print(self.check_connection())
-
         # set flags
+        self.cam_is_connected = False
         self.cam_is_refreshing = False
+
+        # create a Powermeter class instance
+        self.pm = None
+        # self.check_connection()    # creates the instance if the camera is connected
 
         # necessary initializations
         self.plot_y_1 = getattr(self, 'plot_y', [])
@@ -368,7 +370,9 @@ class PowerMeterApp:
         """
         setups the start button, updates the is_refreshing flag and starts data acquisition
         """
-        if self.pm.dev is not None:
+        if self.start_button.cget("text") == "    Démarrer    ":
+            self.check_connection()
+        if self.cam_is_connected:
             if not self.cam_is_refreshing:
                 print(" Processus démarré !")
                 self.cam_is_refreshing = True
@@ -400,27 +404,22 @@ class PowerMeterApp:
         """
         checks the camera's connection status
         """
-        camera_address = 0x33  # Adresse I2C de la caméra
-        try:
-            print("toto")
-            i2c = I2cController()
-            print("tata")
-            print(i2c)
-            i2c.configure("ftdi://::/1")
-            print("titi")
-
-            # Ouvrir un port I2C sur l'adresse de la caméra
-            slave = i2c.get_port(camera_address)
-            print("tutu")
-            slave.write(b"\x00")
-            print("tete")
-            
-            # self.status_label.config(text="Connexion I2C OK (pyftdi)", fg="blue")
-            return True
-        except Exception as e:
-            # self.status_label.config(text="Caméra non détectée (pyftdi)", fg="red")
-            print(f" Erreur I2C avec pyftdi: {e}")
-            return False
+        print(f" Vérification de la connexion avec le capteur...")
+        ports = [port.device for port in serial.tools.list_ports.comports()]
+        if "COM3" in ports:
+            try:
+                with serial.Serial("COM3", baudrate=9600, timeout=1) as test_ser:
+                    pass
+                self.pm = PowerMeter_test()
+                if self.pm.dev is not None:
+                    self.cam_is_connected = True
+                else:
+                    self.cam_is_connected = False
+            except serial.SerialException as e:
+                self.cam_is_connected = True
+        else:
+            print(f" Veuillez connecter / reconnecter le capteur.")
+            self.cam_is_connected = False
 
     def update_loop(self, test=False):
         """
@@ -608,7 +607,7 @@ class PowerMeterApp:
                     np.save(save_path, self.camera_data)
                     print(f" Image enregistrée !")
                 except Exception as e:
-                    print(f"Erreur lors de la sauvegarde de l'image: {e}.")
+                    print(f" Erreur lors de la sauvegarde de l'image: {e}.")
         else:
             print(" Il n'y a pas d'image à enregistrer !")
 
