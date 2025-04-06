@@ -6,7 +6,7 @@ from powermeter import PowerMeter
 
 
 class PowerMeter_test(PowerMeter):
-    
+
     def __init__(self):
         super().__init__()
 

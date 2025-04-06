@@ -8,6 +8,7 @@ import sys
 import os
 import time
 
+from pyftdi.i2c import I2cController
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
@@ -82,8 +83,9 @@ class PowerMeterApp:
         font = tkFont.Font(family='Trebuchet MS', size=12)
         font_pw = tkFont.Font(family='Trebuchet MS', size=18)
 
-        # 
-        pre_saving_matrix = np.zeros((10, 10), dtype=np.float32)
+        # pre_saving matrix initialization
+        # pre_saving_matrix = np.zeros((24, 32, self.time_duration * 32), dtype=np.float32)
+        self.pre_saving_matrix = None
 
         """ global frames """
 
@@ -299,7 +301,9 @@ class PowerMeterApp:
         # create a Powermeter class instance
         self.pm = PowerMeter_test()
 
-        # set flag
+        print(self.check_connection())
+
+        # set flags
         self.cam_is_refreshing = False
 
         # necessary initializations
@@ -308,7 +312,9 @@ class PowerMeterApp:
 
         self.plot_y_2 = getattr(self, 'plot_y', [])
         self.plot_x_2 = getattr(self, 'plot_x', [])
-    
+
+        # self.root.after(1000, self.test_func)
+
     def on_wavelength_selected(self, event=None):
         """
         Handles when a preset wavelength is selected
@@ -389,6 +395,32 @@ class PowerMeterApp:
                 self.power_values_1 = self.plot_y_1
                 self.cam_is_refreshing = False
                 self.start_button.config(text="    Démarrer    ")
+
+    def check_connection(self):
+        """
+        checks the camera's connection status
+        """
+        camera_address = 0x33  # Adresse I2C de la caméra
+        try:
+            print("toto")
+            i2c = I2cController()
+            print("tata")
+            print(i2c)
+            i2c.configure("ftdi://::/1")
+            print("titi")
+
+            # Ouvrir un port I2C sur l'adresse de la caméra
+            slave = i2c.get_port(camera_address)
+            print("tutu")
+            slave.write(b"\x00")
+            print("tete")
+            
+            # self.status_label.config(text="Connexion I2C OK (pyftdi)", fg="blue")
+            return True
+        except Exception as e:
+            # self.status_label.config(text="Caméra non détectée (pyftdi)", fg="red")
+            print(f" Erreur I2C avec pyftdi: {e}")
+            return False
 
     def update_loop(self, test=False):
         """
@@ -499,17 +531,31 @@ class PowerMeterApp:
         updates the camera plot at 32Hz
         """
         if self.pm.dev is not None:
-            if self.cam_is_refreshing:
-                try:
-                    self.camera_data = self.pm.get_temp()
-                    self.ax_2.clear()
-                    self.ax_2.imshow(self.camera_data, cmap="plasma")
-                    self.ax_2.set_title("Image thermique")
-                    self.ax_2.axis("off")
-                    self.canvas_2.draw()
-                    self.root.after(self.cam_time_inc, self.update_cam)
-                except Exception as e:
-                    print(f"Erreur lors de la mise à jour de la caméra: {e}.")
+            if self.total_saving_duration is None:
+                if self.cam_is_refreshing:
+                    try:
+                        self.camera_data = self.pm.get_temp()
+                        self.ax_2.clear()
+                        self.ax_2.imshow(self.camera_data, cmap="plasma")
+                        self.ax_2.set_title("Image thermique")
+                        self.ax_2.axis("off")
+                        self.canvas_2.draw()
+                        self.root.after(self.cam_time_inc, self.update_cam)
+                    except Exception as e:
+                        print(f" Erreur lors de la mise à jour de la caméra: {e}.")
+            else:
+                if self.cam_is_refreshing:
+                    try:
+                        self.camera_data = self.pm.get_temp()
+                        self.ax_2.clear()
+                        self.ax_2.imshow(self.camera_data, cmap="plasma")
+                        self.ax_2.set_title("Image thermique")
+                        self.ax_2.axis("off")
+                        self.canvas_2.draw()
+                        self.save_cam_image(self.camera_data)
+                        self.root.after(self.cam_time_inc, self.update_cam)
+                    except Exception as e:
+                        print(f" Erreur lors de l'enregistrement des données de la caméra: {e}.")
         else:
             self.ax_2.clear()
             self.ax_2.imshow(np.zeros((self.pm.rows, self.pm.cols), dtype=np.float32), cmap="plasma")
@@ -551,7 +597,7 @@ class PowerMeterApp:
 
     def save_cam_data(self):
         """
-        save the current frame of the camera to the saved_test_data folder
+        saves the current frame of the camera to the saved_test_data folder
         """
         if self.pm.dev is not None:
             if self.cam_is_refreshing:
@@ -565,6 +611,22 @@ class PowerMeterApp:
                     print(f"Erreur lors de la sauvegarde de l'image: {e}.")
         else:
             print(" Il n'y a pas d'image à enregistrer !")
+
+    def save_cam_image(self, camera_data):
+        """
+        saves the sequence of images from the camera as a 24x32x(32*test_duration (sec.)) matrix
+        """
+        try:
+            current_saved_cam_array= np.concatenate(self.pre_saving_matrix, camera_data, axis=2)
+            if current_saved_cam_array.shape[2] > 32 * self.total_saving_duration:
+                current_saved_cam_array = np.delete(current_saved_cam_array, 0, axis=2)
+            self.pre_saving_matrix = current_saved_cam_array
+            folder_path = r"UI\saved_camera_data"
+            num_files = len([f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))])
+            save_path = os.path.join(folder_path, f"{time.strftime("%Y_%m_%d")}_{num_files}_camera_data.npy")
+            np.save(save_path, self.pre_saving_matrix)
+        except Exception as e:
+            print(f" Erreur lors de la sauvegarde de l'image: {e}.")
 
     def click_clear_1(self):
         """
@@ -602,6 +664,13 @@ class PowerMeterApp:
 
         # log to terminal
         print(" Graphique de position effacé.")
+
+    def test_func(self, event=None):
+        """
+        dummy function
+        """
+        # print("toto")
+        # root.after(1000, self.test_func())
 
     def on_closing(self):
         print(" Closing the application...")        

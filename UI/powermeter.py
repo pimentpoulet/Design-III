@@ -1,10 +1,7 @@
 from mlx90640_evb9064x import *
 from mlx90640 import *
-import random
 import numpy as np
 import cv2
-import sys
-import io
 
 
 class PowerMeter:
@@ -21,13 +18,12 @@ class PowerMeter:
                 self.dev.set_debug(False)
             except:
                 pass
+            print(evb9064x_get_i2c_comport_url('auto'))
             self.dev.i2c_init(evb9064x_get_i2c_comport_url('auto'))
             self.dev.set_refresh_rate(6)
             self.dev.dump_eeprom()
             self.dev.extract_parameters()
             self.camera_available = True
-
-
         except Exception as e:
             self.dev = None
             print(f" Erreur: Initialisation de la caméra impossible --> {e}.")
@@ -84,11 +80,11 @@ class PowerMeter:
         moy_temp = np.mean(temp)
         delta_temp = temp - moy_temp
         total_temp = np.sum(delta_temp)
-        
+
         x_coords, y_coords = np.meshgrid(np.arange(self.cols), np.arange(self.rows))
         x_centroid = np.sum(x_coords * delta_temp) / total_temp
         y_centroid = np.sum(y_coords * delta_temp) / total_temp
-        
+
         return (x_centroid, y_centroid)
 
     def find_circle(self):
