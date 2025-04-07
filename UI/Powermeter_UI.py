@@ -297,16 +297,15 @@ class PowerMeterApp:
         self.logo.grid(row=0, column=0, sticky="ne")
 
         # firmware version label
-        self.firmware_label = tk.Label(self.vrs_frame, text="1.0.0alpha1")
+        self.firmware_label = tk.Label(self.vrs_frame, text="1.0.1_beta")
         self.firmware_label.grid(row=0, column=0, padx=20, pady=20, sticky="w")
 
         # set flags
         self.cam_is_connected = False
         self.cam_is_refreshing = False
 
-        # create a Powermeter class instance
+        # initialize the powermeter object
         self.pm = None
-        # self.check_connection()    # creates the instance if the camera is connected
 
         # necessary initializations
         self.plot_y_1 = getattr(self, 'plot_y', [])
@@ -314,8 +313,6 @@ class PowerMeterApp:
 
         self.plot_y_2 = getattr(self, 'plot_y', [])
         self.plot_x_2 = getattr(self, 'plot_x', [])
-
-        # self.root.after(1000, self.test_func)
 
     def on_wavelength_selected(self, event=None):
         """
@@ -374,6 +371,7 @@ class PowerMeterApp:
             self.check_connection()
         if self.cam_is_connected:
             if not self.cam_is_refreshing:
+                print(f" Le capteur est connecté sur le port COM3.")
                 print(" Processus démarré !")
                 self.cam_is_refreshing = True
                 self.update_loop(test=False)
@@ -387,7 +385,6 @@ class PowerMeterApp:
                 self.start_button.config(text="    Démarrer    ")
         else:
             if not self.cam_is_refreshing:
-                print(" La caméra n'est pas disponible.")
                 self.cam_is_refreshing = True
                 print(" Test démarré !")
                 self.update_loop(test=True)
@@ -408,7 +405,7 @@ class PowerMeterApp:
         ports = [port.device for port in serial.tools.list_ports.comports()]
         if "COM3" in ports:
             try:
-                with serial.Serial("COM3", baudrate=9600, timeout=1) as test_ser:
+                with serial.Serial("COM3", baudrate=9600, timeout=1) as _:
                     pass
                 self.pm = PowerMeter_test()
                 if self.pm.dev is not None:
@@ -419,6 +416,7 @@ class PowerMeterApp:
                 self.cam_is_connected = True
         else:
             print(f" Veuillez connecter / reconnecter le capteur.")
+            self.pm = PowerMeter_test()
             self.cam_is_connected = False
 
     def update_loop(self, test=False):

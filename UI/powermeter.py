@@ -25,7 +25,7 @@ class PowerMeter:
             self.camera_available = True
         except Exception as e:
             self.dev = None
-            print(f" Erreur: Initialisation de la caméra impossible --> Le capteur n'est pas branché.")
+            # print(f" Erreur: Initialisation de la caméra impossible --> Le capteur n'est pas branché.")
 
         # Initialisation de la structure de données
         self.rows, self.cols = 24, 32
