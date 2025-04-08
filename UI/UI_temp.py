@@ -10,7 +10,7 @@ import time
 import serial
 import serial.tools.list_ports
 
-from UI.ToggleButton import ToggleButton
+from ToggleButton import ToggleButton
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
@@ -86,8 +86,11 @@ class PowerMeterApp:
         font_pw = tkFont.Font(family='Trebuchet MS', size=18)
 
         # pre_saving matrix initialization
-        # pre_saving_matrix = np.zeros((24, 32, self.time_duration * 32), dtype=np.float32)
-        self.pre_saving_matrix = None
+        try:
+            pre_saving_matrix = np.zeros((24, 32, self.time_duration * 32), dtype=np.float32)
+        except:
+            self.pre_saving_matrix = None
+            pass
 
         """ global frames """
 
@@ -125,10 +128,6 @@ class PowerMeterApp:
         self.logo_frame = tk.Frame(self.lw_glob_frame, highlightbackground="black", highlightthickness=2)
         self.logo_frame.grid(row=0, column=2, columnspan=2, padx=25, pady=10)
         self.logo_frame.configure(width=300, height=150)
-
-        # version frame
-        self.vrs_frame = tk.Frame(self.lw_glob_frame, highlightbackground="black", highlightthickness=2)
-        self.vrs_frame.grid(row=2, column=0, padx=25, pady=10, sticky="nsew")
 
         """ configure frames """
 
@@ -209,16 +208,16 @@ class PowerMeterApp:
         self.test_duration_entry.grid(row=1, column=3, padx=10, pady=5, sticky="we")
         self.test_duration_entry.bind("<Return>", self.display_saving_time)
 
-        # Bouton d'enregistrement avec style iOS
+        # Bouton toggle d'enregistrement
         self.toggle_button = ToggleButton(
             self.acq_frame,
             text_on="Enregistrement activé",
             text_off="Enregistrement désactivé",
             height=40,
             padding=20,
-            off_color="#D3D3D3",  # Gris clair pour l'état OFF
-            on_color="#4CD964",   # Vert iOS pour l'état ON
-            text_color="black",   # Texte noir pour une meilleure visibilité
+            off_color="#D3D3D3",
+            on_color="#4CD964",
+            text_color="black",
             font=("Trebuchet MS", 12, "bold"),
             command=self.toggle_recording
         )
@@ -311,9 +310,7 @@ class PowerMeterApp:
         self.logo = tk.Label(self.logo_frame, image=self.logo_img)
         self.logo.grid(row=0, column=0, sticky="ne")
 
-        # firmware version label
-        self.firmware_label = tk.Label(self.vrs_frame, text="1.0.1_beta")
-        self.firmware_label.grid(row=0, column=0, padx=20, pady=20, sticky="w")
+        """ other initializations """
 
         # set flags
         self.cam_is_connected = False
@@ -336,21 +333,20 @@ class PowerMeterApp:
         self.recording_enabled = state
         if state:
             print(" Enregistrement activé - Les données seront sauvegardées automatiquement")
-            # Si un chemin d'enregistrement n'est pas déjà défini, on demande à l'utilisateur
             if not hasattr(self, 'recording_path'):
                 self.recording_path = filedialog.asksaveasfilename(
                     defaultextension=".csv",
                     filetypes=[("CSV Files", "*.csv"), ("Text Files", "*.txt")],
                     title="Choisir un fichier pour l'enregistrement automatique"
                 )
-                if not self.recording_path:  # Si l'utilisateur annule la sélection
+                self.start_button.config(text="     Démarrer l'enregistrement      ")
+                if not self.recording_path:
                     self.toggle_button.set_state(False)
                     self.recording_enabled = False
-                    print(" Enregistrement annulé - Aucun fichier sélectionné")
+                    print(" Enregistrement annulé - Aucun chemin spécifié.")
                     return
         else:
             print(" Enregistrement désactivé")
-            # Réinitialiser le chemin d'enregistrement si nécessaire
             if hasattr(self, 'recording_path'):
                 delattr(self, 'recording_path')
 
@@ -407,7 +403,7 @@ class PowerMeterApp:
         """
         setups the start button, updates the is_refreshing flag and starts data acquisition
         """
-        if self.start_button.cget("text") == "    Démarrer    ":
+        if self.start_button.cget("text") == "    Démarrer    " or self.start_button.cget("text") == "     Démarrer l'enregistrement      ":
             self.check_connection()
         if self.cam_is_connected:
             if not self.cam_is_refreshing:
@@ -416,12 +412,18 @@ class PowerMeterApp:
                 self.cam_is_refreshing = True
                 self.update_loop(test=False)
                 self.update_cam()
-                self.start_button.config(text="     Arrêter      ")
+                if self.recording_enabled:
+                    self.start_button.config(text="     Arrêter l'enregistrement      ")
+                else:
+                    self.start_button.config(text="     Arrêter      ")
             else:
                 print(" Processus arrêté !")
                 self.wavelengths_1 = self.plot_x_1
                 self.power_values_1 = self.plot_y_1
                 self.cam_is_refreshing = False
+                if self.recording_enabled:
+                    self.recording_enabled = False
+                    self.toggle_button.toggle()
                 self.start_button.config(text="    Démarrer    ")
         else:
             if not self.cam_is_refreshing:
@@ -429,12 +431,18 @@ class PowerMeterApp:
                 print(" Test démarré !")
                 self.update_loop(test=True)
                 self.update_cam()
-                self.start_button.config(text="     Arrêter      ")
+                if self.recording_enabled:
+                    self.start_button.config(text="     Arrêter l'enregistrement      ")
+                else:
+                    self.start_button.config(text="     Arrêter      ")
             else:
                 print(" Test arrêté !")
                 self.wavelengths_1 = self.plot_x_1
                 self.power_values_1 = self.plot_y_1
                 self.cam_is_refreshing = False
+                if self.recording_enabled:
+                    self.recording_enabled = False
+                    self.toggle_button.toggle()
                 self.start_button.config(text="    Démarrer    ")
 
     def check_connection(self):
