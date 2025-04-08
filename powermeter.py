@@ -71,11 +71,11 @@ class PowerMeter:
         moy_temp = np.mean(temp)
         delta_temp = temp - moy_temp
         total_temp = np.sum(delta_temp)
-        
+
         x_coords, y_coords = np.meshgrid(np.arange(self.cols), np.arange(self.rows))
         x_centroid = np.sum(x_coords * delta_temp) / total_temp
         y_centroid = np.sum(y_coords * delta_temp) / total_temp
-        
+
         return (x_centroid, y_centroid)
 
     def find_circle(self):
@@ -132,14 +132,14 @@ class PowerMeter:
         sigma1, sigma2 = params1[4], params2[4]
         k_1, k_2 = params1[2], params2[2]
         return (c_1, amp1, sigma1, k_1), (c_2, amp2, sigma2, k_2)
-        
+
     def get_center(self, params: tuple) -> tuple:
         c_1, c_2 = params[0][0], params[1][0]
         if c_1 == c_2:
             return c_1
         else:
             return (c_1[0] + c_2[0]) / 2, (c_1[1] + c_2[1]) / 2
-        
+
     def get_power(self, params: tuple, plaque: int) -> float:
         if plaque not in (0, 1):
             raise ValueError('plaque must be 0 or 1')
