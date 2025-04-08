@@ -1,10 +1,7 @@
 from mlx90640_evb9064x import *
 from mlx90640 import *
-import random
 import numpy as np
 import cv2
-import sys
-import io
 
 
 class PowerMeter:
@@ -26,11 +23,9 @@ class PowerMeter:
             self.dev.dump_eeprom()
             self.dev.extract_parameters()
             self.camera_available = True
-
-
         except Exception as e:
             self.dev = None
-            print(f" Erreur: Initialisation de la caméra impossible --> {e}.")
+            # print(f" Erreur: Initialisation de la caméra impossible --> Le capteur n'est pas branché.")
 
         # Initialisation de la structure de données
         self.rows, self.cols = 24, 32
@@ -84,11 +79,11 @@ class PowerMeter:
         moy_temp = np.mean(temp)
         delta_temp = temp - moy_temp
         total_temp = np.sum(delta_temp)
-        
+
         x_coords, y_coords = np.meshgrid(np.arange(self.cols), np.arange(self.rows))
         x_centroid = np.sum(x_coords * delta_temp) / total_temp
         y_centroid = np.sum(y_coords * delta_temp) / total_temp
-        
+
         return (x_centroid, y_centroid)
 
     def find_circle(self):
@@ -130,7 +125,7 @@ class PowerMeter:
         To be defined
         """
         if odd_even not in (0, 1):
-            raise ValueError('odd_even must be 0 or 1')
+            raise ValueError(' odd_even must be 0 or 1')
         grid = np.zeroslike(temp)
         ind = np.indices(temp.shape)
         grid[(ind[0] // sq_size + ind[1] // sq_size) % 2 == odd_even] = temp
@@ -161,7 +156,7 @@ class PowerMeter:
             try:
                 self.dev.i2c_tear_down()
             except Exception as e:
-                print(f"Erreur lors de la fermeture de la connexion I2C : {e}")
+                print(f" Erreur lors de la fermeture de la connexion I2C : {e}")
 
     def get_test_moy_temp(self):
         """
