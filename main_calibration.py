@@ -87,22 +87,22 @@ def main_fit_cal():
         print("Pas de données de calibration")
         return
     os.chdir("calibration_data")
-    temp_moys = np.load("temp_diffs.npy")
-    temps = np.load("temps.npy")
-    if not np.all(temp_moys) or not temps:
-        print("Pas de données de calibration")
-        return
+    temp_moys = np.load("temps_moy.npy")
+    temps = np.load("gauche_temps.npy")
+    # if not np.all(~np.isnan(temp_moys)) or not np.any(temps):
+    #     print("Pas de données de calibration")
+    #     return
     height, width = temp_moys.shape[1], temp_moys.shape[2]
 
     # Store polynomial coefficients for each pixel
     coeffs_array = np.zeros((5, height, width))  # 5 coefficients (4th-degree + constant)
-
     # Fit a 4th-degree polynomial for each pixel
     for i in range(height):
         for j in range(width):
-            coeffs_array[:, i, j] = np.polyfit(temp_moys[:, i, j], temps, deg=4)
-    np.save(f"coeffs_range{temps[0]}-{temps[-1]}_jump{(temps[-1]-temps[0])/temps.size}.npy", coeffs_array)
+            idx = np.isfinite(temp_moys[:, i, j]) & np.isfinite(temps)
+            coeffs_array[:, i, j] = np.polyfit(temp_moys[idx, i, j], temps[idx], deg=4)
     os.chdir("..")
+    np.save(f"coeffs_range{temps[0]}-{temps[-1]}_jump{(temps[-1]-temps[0])/(temps.size-1)}.npy", coeffs_array)
     return coeffs_array
 
 
@@ -121,10 +121,30 @@ def test_cal(calibration_data: np.ndarray):
             cv2.destroyAllWindows()
             sys.exit(0)
 
+def reorder_calibration_data() -> np.ndarray:
+    # Reorder the calibration data to match the expected shape
+    d_temp_diffs_20_55 = np.load("calibration_data/droite_temp_diffs20-55.npy")
+    d_temp_diffs_60_150 = np.load("calibration_data/droite_temp_diffs.npy")
+    g_temp_diffs = np.load("calibration_data/gauche_temp_diffs.npy")
+    # Combine the data
+    print(d_temp_diffs_20_55.shape)
+    print(d_temp_diffs_60_150.shape)
+    print(g_temp_diffs.shape)
+    d_temp_diffs = np.zeros_like(g_temp_diffs)
+    d_temp_diffs[:8, :, :] = d_temp_diffs_20_55[:8, :, :]
+    d_temp_diffs[8:, :, :] = d_temp_diffs_60_150[:19, :, :]
+    temps_moys = np.zeros_like(g_temp_diffs)
+    temps_moys[:, :, :16] = g_temp_diffs[:, :, :16]
+    temps_moys[:, :, 16:] = d_temp_diffs[:, :, 16:]
+    np.save("temps_moy.npy", temps_moys)
+
 
 if __name__ == "__main__":
-    main_cal()
-    #ca = main_fit_cal()
+    # reorder_calibration_data()
+
+    #main_cal()
+    ca = main_fit_cal()
+
     #while True:
         #try:
          #   pm = PowerMeter()
@@ -140,4 +160,3 @@ if __name__ == "__main__":
     
     #ca = np.load("calibration_data/coeffs_range20-20_jump0.0.npy")
     #test_cal(ca)
-    
