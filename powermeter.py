@@ -7,7 +7,7 @@ from scipy.optimize import curve_fit
 
 
 class PowerMeter:
-    def __init__(self, buffer_size=32):
+    def __init__(self, gain, tau, buffer_size=32):
         # Initialisation de la caméra
         self.camera_available = False
 
@@ -29,6 +29,8 @@ class PowerMeter:
 
         # Initialisation de la structure de données
         self.rows, self.cols = 24, 32
+        self.gain = gain
+        self.tau = tau
         self.buffer_size = buffer_size
         self.temp_arrays = np.zeros((self.buffer_size, self.rows, self.cols), dtype=np.float32)
         try:
@@ -55,9 +57,18 @@ class PowerMeter:
         self.temp_arrays = np.roll(self.temp_arrays, 1, axis=0)
         self.temp_arrays[0,:,:] = temp_array
 
-    def get_moy_temp(self) -> np.ndarray:
-        # Retourne la moyenne des températures dans le buffer
-        return np.mean(self.temp_arrays, axis=0)
+    def get_moy_temp(self, half = None) -> np.ndarray:
+        if half is None:
+            # Retourne la moyenne des températures dans le buffer
+            return np.mean(self.temp_arrays, axis=0)
+        elif half == 0:
+            # Retourne la moyenne des températures dans la première moitié du buffer
+            return np.mean(self.temp_arrays[:self.buffer_size//2, :, :], axis=0)
+        elif half == 1:
+            # Retourne la moyenne des températures dans la seconde moitié du buffer
+            return np.mean(self.temp_arrays[self.buffer_size//2:, :, :], axis=0)
+        else:
+            raise ValueError("half must be 0 or 1")
 
     def calibrate_temp(self, temp_array: np.ndarray) -> np.ndarray:
         # Retourne la température corrigée
@@ -75,7 +86,6 @@ class PowerMeter:
         x_coords, y_coords = np.meshgrid(np.arange(self.cols), np.arange(self.rows))
         x_centroid = np.sum(x_coords * delta_temp) / total_temp
         y_centroid = np.sum(y_coords * delta_temp) / total_temp
-        
         return (x_centroid, y_centroid)
 
     def find_circle(self):
@@ -96,7 +106,7 @@ class PowerMeter:
         temp = self.get_moy_temp()
         return np.unravel_index(np.argmax(temp, axis=None), temp.shape)
 
-    def checkers_grid(self, sq_size: int, odd_even):
+    def checkers_grid(self, sq_size: int, odd_even: int) -> np.ndarray:
         if odd_even not in (0, 1):
             raise ValueError('odd_even must be 0 or 1')
         grid = np.empty((self.rows, self.cols))
@@ -105,48 +115,53 @@ class PowerMeter:
         grid[(ind[0] // sq_size + ind[1] // sq_size) % 2 == odd_even] = 1
         return grid
 
-    def gaussian2D(xy, h_1, h_2, amp, k, sigma):
-        x_1, x_2 = xy
-        return (amp * np.exp(-((x_1 - h_1) ** 2 + (x_2 - h_2) ** 2) / (2 * (sigma ** 2)))+k).ravel()
+    def gaussian2D(xy, h_0, h_1, amp, k, sigma):
+        x_0, x_1 = xy
+        return (amp * np.exp(-((x_0 - h_0) ** 2 + (x_1 - h_1) ** 2) / (2 * (sigma ** 2)))+k).ravel()
 
     def fit_2Dgauss(self, grid: np.ndarray):
         a, b = self.find_max_temp_index()
         x, y = np.indices(grid.shape)
-        to_fit = grid[x, y]
-        params, cov = curve_fit(lambda i, j, k, amp, sigma: 
-                                k+ amp*np.exp(-((i-a)**2 + (j-b)**2) / (sigma**2))
-                                ,x
-                                ,y
-                                ,to_fit
-                                ,p0=[1, 1, 1])
+        params, cov = curve_fit(self.gaussian2D
+                            ,(x.ravel(), y.ravel())
+                            ,grid.ravel()
+                            ,p0=[a, b, 50, 24, 1]
+                            ,nan_policy='omit')
         return params, cov
 
-    def get_gaussian_params(self) -> float:
-        temp = self.get_moy_temp()
-        grid1 = self.checkers_grid(temp, 2, 0)
-        grid2 = self.checkers_grid(temp, 2, 1)
-        params1, cov1 = self.fit_2Dgauss(grid1)
-        params2, cov2 = self.fit_2Dgauss(grid2)
-        c_1, c_2 = params1[:2], params2[:2]
-        amp1, amp2 = params1[3], params2[3]
-        sigma1, sigma2 = params1[4], params2[4]
-        k_1, k_2 = params1[2], params2[2]
-        return (c_1, amp1, sigma1, k_1), (c_2, amp2, sigma2, k_2)
+    def get_gaussian_params(self, odd_even: int, half = None) -> tuple:
+        """ Donne les paramètres de la gaussienne 2D pour un cadrillé qui dépend de
+        odd_even et pour la moitié du buffer choisie (half: 0 ou 1) ou l'ensemble du
+         buffer (half: None)."""
+        temp = self.get_moy_temp(half)
+        grid = self.checkers_grid(temp, 2, odd_even)
+        params, cov = self.fit_2Dgauss(grid)
+        c = params[:2]
+        amp= params[2]
+        k = params[3]
+        sigma = params[4]
+        return (c, amp, k, sigma)
+    
+    def get_power(self, plaque: int = 0) -> float:
+        """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
+        params0, params1 = self.get_gaussian_params(plaque, 0), 
+        p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
+        refresh = self.dev._get_refresh_rate()
+        dt = self.buffer_size /2 / (2**(refresh-1))
+        P = (self.tau*(p_diff1-p_diff0) / dt + p_diff1)/self.gain
+        return P
         
-    def get_center(self, params: tuple) -> tuple:
-        c_1, c_2 = params[0][0], params[1][0]
-        if c_1 == c_2:
-            return c_1
+    def get_center(self, params0: tuple, params1: tuple) -> tuple:
+        """ Retourne le centre de la gaussienne 2D pour deux cadrillés différents."""
+        c_0, c_1 = params0[0], params1[0]
+        if c_0 == c_1:
+            return c_0
         else:
-            return (c_1[0] + c_2[0]) / 2, (c_1[1] + c_2[1]) / 2
-        
-    def get_power(self, params: tuple, plaque: int) -> float:
-        if plaque not in (0, 1):
-            raise ValueError('plaque must be 0 or 1')
-        p_max = params[plaque][1]
-        p_min = params[plaque][3]
-        p_diff = p_max - p_min
+            return (c_0[0] + c_1[0]) / 2, (c_0[1] + c_0[1]) / 2
+
+    def get_wavelength(self, params0: tuple, params1: tuple) -> float:
+        """ Retourne la longueur d'onde en fonction des paramètres de la gaussienne 2D 
+        pour deux plaques."""
         pass
 
-    def get_wavelength(self, params: tuple) -> float:
-        pass
+        
