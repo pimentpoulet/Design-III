@@ -73,7 +73,7 @@ plt.xlabel("Longueur d'onde [nm]")
 plt.ylabel("Absorptivité [%]")
 plt.grid(True)
 plt.legend(loc="lower left")
-plt.show()
+# plt.show()
 
 """
 plt.plot(wv_6, a_n, label="plaque peinturée")
@@ -107,6 +107,9 @@ r_1_1_4 = butter_lowpass_filter((a_ech_noir_1_1 / a_4))
 r_2_1_6 = butter_lowpass_filter((a_ech_noir_2_1 / a_6))
 r_2_1_4 = butter_lowpass_filter((a_ech_noir_2_1 / a_4))
 
+np.save(r"C:\Clément MSI\UL\Session H2025_6\Design III\Design-III\Absorption Graphs\wv_6", wv_6)
+np.save(r"C:\Clément MSI\UL\Session H2025_6\Design III\Design-III\Absorption Graphs\Ratios_2_6", r_2_1_6)
+
 """
 plt.plot(wv_6, r_6_5, label="r_6_5")
 plt.plot(wv_6, r_6_4, label="r_6_4")
@@ -125,7 +128,7 @@ plt.xlabel("Longueur d'onde [nm]")
 plt.ylabel("Ratio des absorptivités")
 plt.grid(True)
 plt.legend(loc="center right")
-plt.show()
+# plt.show()
 
 # 6-5 -> 6-3
 r_65 = butter_lowpass_filter((a_6 - a_5))

@@ -201,11 +201,9 @@ class PowerMeterApp:
 
         # test duration label
         self.test_duration_label = tk.Label(self.acq_frame, text="Durée d'acquisition [sec]:", font=font)
-        self.test_duration_label.grid(row=1, column=2, padx=10, pady=5, sticky="e")
 
         # test duration entry
         self.test_duration_entry = tk.Entry(self.acq_frame, font=font)
-        self.test_duration_entry.grid(row=1, column=3, padx=10, pady=5, sticky="we")
         self.test_duration_entry.bind("<Return>", self.display_saving_time)
 
         # Bouton toggle d'enregistrement
@@ -221,7 +219,7 @@ class PowerMeterApp:
             font=("Trebuchet MS", 12, "bold"),
             command=self.toggle_recording
         )
-        self.toggle_button.grid(row=2, column=2, columnspan=2, padx=20, pady=10, stick="nsw")
+        self.toggle_button.grid(row=1, column=2, columnspan=2, padx=20, pady=10, stick="nsw")
 
         # Bind events for selection or manual entry
         self.wavelength_menu.bind("<<ComboboxSelected>>", self.on_wavelength_selected)
@@ -331,8 +329,11 @@ class PowerMeterApp:
         Gère l'activation/désactivation de l'enregistrement
         """
         self.recording_enabled = state
+        # s
         if state:
             print(" Enregistrement activé - Les données seront sauvegardées automatiquement")
+            self.test_duration_label.grid(row=2, column=2, padx=10, pady=5, sticky="e")
+            self.test_duration_entry.grid(row=2, column=3, padx=10, pady=5, sticky="we")
             if not hasattr(self, 'recording_path'):
                 self.recording_path = filedialog.asksaveasfilename(
                     defaultextension=".csv",
@@ -347,6 +348,8 @@ class PowerMeterApp:
                     return
         else:
             print(" Enregistrement désactivé")
+            self.test_duration_label.grid_forget()
+            self.test_duration_entry.grid_forget()
             if hasattr(self, 'recording_path'):
                 delattr(self, 'recording_path')
 
@@ -401,45 +404,69 @@ class PowerMeterApp:
 
     def click_start(self):
         """
-        setups the start button, updates the is_refreshing flag and starts data acquisition
+        setups the start button, updates the flags and starts data acquisition / test data generation
         """
         if self.start_button.cget("text") == "    Démarrer    " or self.start_button.cget("text") == "     Démarrer l'enregistrement      ":
             self.check_connection()
+
+        # camera is connected
         if self.cam_is_connected:
+
+            # process is started
             if not self.cam_is_refreshing:
                 print(f" Le capteur est connecté sur le port COM3.")
                 print(" Processus démarré !")
                 self.cam_is_refreshing = True
+
+                # call update functions in real use mode
                 self.update_loop(test=False)
                 self.update_cam()
+
+                # set the stop button according to sensor use mode
                 if self.recording_enabled:
                     self.start_button.config(text="     Arrêter l'enregistrement      ")
                 else:
                     self.start_button.config(text="     Arrêter      ")
+
+            # process is stopped
             else:
                 print(" Processus arrêté !")
                 self.wavelengths_1 = self.plot_x_1
                 self.power_values_1 = self.plot_y_1
                 self.cam_is_refreshing = False
+
+                # disable the recording flag if recording
                 if self.recording_enabled:
                     self.recording_enabled = False
                     self.toggle_button.toggle()
                 self.start_button.config(text="    Démarrer    ")
+
+        # camera is disconnected
         else:
+
+            # process is started
             if not self.cam_is_refreshing:
                 self.cam_is_refreshing = True
                 print(" Test démarré !")
+
+                # call update functions in test mode
                 self.update_loop(test=True)
                 self.update_cam()
+
+                # set the stop button according to sensor use mode
                 if self.recording_enabled:
                     self.start_button.config(text="     Arrêter l'enregistrement      ")
                 else:
                     self.start_button.config(text="     Arrêter      ")
+            
+            # process is stopped
             else:
                 print(" Test arrêté !")
                 self.wavelengths_1 = self.plot_x_1
                 self.power_values_1 = self.plot_y_1
                 self.cam_is_refreshing = False
+
+                # disable the recording flag if recording
                 if self.recording_enabled:
                     self.recording_enabled = False
                     self.toggle_button.toggle()
@@ -451,19 +478,29 @@ class PowerMeterApp:
         """
         print(f" Vérification de la connexion avec le capteur...")
         ports = [port.device for port in serial.tools.list_ports.comports()]
+
+        # check if the camera is connected to COM3
         if "COM3" in ports:
             try:
                 with serial.Serial("COM3", baudrate=9600, timeout=1) as _:
                     pass
+
+                # intialize the powermeter object
                 self.pm = PowerMeter_test()
+
+                # check if the powermeter class's init worked
                 if self.pm.dev is not None:
                     self.cam_is_connected = True
                 else:
                     self.cam_is_connected = False
             except serial.SerialException as e:
                 self.cam_is_connected = True
+
+        # the camera is disconnected
         else:
             print(f" Veuillez connecter / reconnecter le capteur.")
+
+            # powermeter instance for test mode
             self.pm = PowerMeter_test()
             self.cam_is_connected = False
 
@@ -472,10 +509,15 @@ class PowerMeterApp:
         updates the mean_temp plot every 100 ms
         """
         if self.cam_is_refreshing:
+
+            # real use mode
             if not test:
                 try:
+                    # get the mean temperature from the powermeter
                     mean_temp = np.mean(self.pm.get_temp())
                     last = len(self.plot_x_1) if hasattr(self, 'plot_x_1') else 0
+
+                    # recording disabled
                     if self.total_saving_duration is None:
                         self.plot_x_1.append(last)
                         self.plot_y_1.append(mean_temp)
@@ -487,6 +529,8 @@ class PowerMeterApp:
                         self.canvas_1.draw()
                         self.pw_measurement_label.config(text=f"{mean_temp:.2f} mW")
                         self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
+                    
+                    # recording enabled
                     else:
                         self.plot_x_1.append(last)
                         self.ax_1.set_xlim(0, self.total_saving_duration)
@@ -497,23 +541,36 @@ class PowerMeterApp:
                         self.ax_1.grid(True)
                         self.canvas_1.draw()
                         self.pw_measurement_label.config(text=f"{mean_temp:.2f} mW")
+
+                        # current saving time < total saving duration
                         if self.current_save_duration < self.total_saving_duration:
                             self.current_save_duration += self.power_time_inc / 1000
                             self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
+
+                        # current saving time >= total saving duration
                         else:
                             self.cam_is_refreshing = False
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
                             print(" Fin de l'acquisition de données.")
                             self.start_button.config(text="    Démarrer    ")
+
                 except Exception as e:
                     print(f" Erreur lors de la prise de mesure: {e}.")
+
+                    # recording disabled --> call the update_loop function again in real use mode
                     if self.total_saving_duration is None:
                         self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
+
+                    # recording enabled
                     else:
+
+                        # current saving time < total saving duration
                         if self.current_save_duration < self.total_saving_duration:
                             self.current_save_duration += self.power_time_inc / 1000
                             self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
+                        
+                        # current saving time >= total saving duration
                         else:
                             self.cam_is_refreshing = False
                             self.wavelengths_1 = self.plot_x_1
@@ -521,8 +578,10 @@ class PowerMeterApp:
                             self.current_save_duration = 0
                             print(" Fin de l'acquisition de données.")
                             self.start_button.config(text="    Démarrer    ")
+            # test mode
             else:
                 try:
+                    # get the test mean temperature from the powermeter
                     mean_test_temp = self.pm.get_test_moy_temp()
                     last = len(self.plot_x_1) if hasattr(self, 'plot_x_1') else 0
                     if self.total_saving_duration is None:
@@ -709,13 +768,6 @@ class PowerMeterApp:
 
         # log to terminal
         print(" Graphique de position effacé.")
-
-    def test_func(self, event=None):
-        """
-        dummy function
-        """
-        # print("toto")
-        # root.after(1000, self.test_func())
 
     def on_closing(self):
         print(" Closing the application...")        
