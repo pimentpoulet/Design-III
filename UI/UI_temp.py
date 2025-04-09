@@ -81,6 +81,9 @@ class PowerMeterApp:
         self.power_time_inc = 1000           # ms
         self.cam_time_inc = 32               # ms
 
+        # save parameters
+        self.recording_path = None
+
         # fonts
         font = tkFont.Font(family='Trebuchet MS', size=12)
         font_pw = tkFont.Font(family='Trebuchet MS', size=18)
@@ -333,6 +336,7 @@ class PowerMeterApp:
 
         # recording enabled
         if state:
+            print(f" state: {state}")
             print(" Enregistrement activé - Les données seront sauvegardées automatiquement")
 
             # create the test duration label and entry
@@ -526,8 +530,10 @@ class PowerMeterApp:
                             self.toggle_recording = False
                             self.toggle_button.toggle()
 
+                            self.current_save_duration = 0
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
+                            self.save_data(self.recording_path)
                             print(" Fin de l'acquisition de données.")
                             self.start_button.config(text="    Démarrer    ")
                 except Exception as e:
@@ -547,9 +553,14 @@ class PowerMeterApp:
                         # current saving time >= total saving duration
                         else:
                             self.cam_is_refreshing = False
+                            self.recording_enabled = False
+                            self.toggle_recording = False
+                            self.toggle_button.toggle()
+
+                            self.current_save_duration = 0
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
-                            self.current_save_duration = 0
+                            self.save_data(self.recording_path)
                             print(" Fin de l'acquisition de données.")
                             self.start_button.config(text="    Démarrer    ")
             # test mode
@@ -596,9 +607,10 @@ class PowerMeterApp:
                             self.toggle_recording = False
                             self.toggle_button.toggle()
 
+                            self.current_save_duration = 0
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
-                            self.current_save_duration = 0
+                            self.save_data(self.recording_path)
                             print(" Fin de la génération de données.")
                             self.start_button.config(text="    Démarrer    ")
                 except Exception as e:
@@ -618,9 +630,14 @@ class PowerMeterApp:
                         # current saving time >= total saving duration
                         else:
                             self.cam_is_refreshing = False
+                            self.recording_enabled = False
+                            self.toggle_recording = False
+                            self.toggle_button.toggle()
+
+                            self.current_save_duration = 0
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
-                            self.current_save_duration = 0
+                            self.save_data(self.recording_path)
                             print(" Fin de la génération de données.")
                             self.start_button.config(text="    Démarrer    ")
 
@@ -688,21 +705,20 @@ class PowerMeterApp:
             print(" Durée invalide, la durée doit être un nombre !\n")
             self.total_saving_duration = None
 
-    def save_data(self):
+    def save_data(self, save_path):
+        """
+        save the power graph data
+        """
         if self.wavelengths_1 is None or self.power_values_1 is None:
             print(" Aucune donnée à enregistrer !")
             return
-        file_path = filedialog.asksaveasfilename(defaultextension=".csv",
-                                                 filetypes=[("CSV Files", "*.csv"), ("Text Files", "*.txt")])
-        if not file_path:
-            return
         try:
-            with open(file_path, mode="w", newline="") as file:
+            with open(save_path, mode="w", newline="") as file:
                 writer = csv.writer(file)
-                writer.writerow(["Wavelength [nm]", "Power [dB]"])
-                for w, p in zip(self.wavelengths_1, self.power_values_1):
-                    writer.writerow([w, p])
-            print(f" Données enregistrées à {file_path}")
+                writer.writerow(["Time [s]", "Power [mW]"])
+                for time, pw in zip(self.wavelengths_1, self.power_values_1):
+                    writer.writerow([time, pw])
+            print(f" Données enregistrées à {save_path}")
         except Exception as e:
             print(f" Erreur durant la sauvegarde: {e}")
 
