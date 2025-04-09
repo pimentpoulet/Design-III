@@ -158,14 +158,6 @@ class PowerMeter:
             return c_0
         else:
             return (c_0[0] + c_1[0]) / 2, (c_0[1] + c_1[1]) / 2
-        
-    def get_power(self, params: tuple, plaque: int) -> float:
-        if plaque not in (0, 1):
-            raise ValueError('plaque must be 0 or 1')
-        p_max = params[plaque][1]
-        p_min = params[plaque][3]
-        p_diff = p_max - p_min
-        pass
 
     def get_wavelength(self, params: tuple) -> float:
         pass
