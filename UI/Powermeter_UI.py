@@ -317,6 +317,7 @@ class PowerMeterApp:
         self.cam_is_connected = False
         self.cam_is_refreshing = False
         self.recording_enabled = False
+        self.total_saving_duration_entered = False
 
         # initialize the powermeter object
         self.pm = None
@@ -358,6 +359,7 @@ class PowerMeterApp:
         else:
             print(" Enregistrement désactivé")
             self.total_saving_duration = None
+            self.total_saving_duration_entered = False
             self.cam_is_refreshing = False
             self.test_duration_label.grid_forget()
             self.test_duration_entry.grid_forget()
@@ -376,6 +378,16 @@ class PowerMeterApp:
 
             # process is started
             if not self.cam_is_refreshing:
+
+                # disable buttons
+                self.clear_button_1.config(state="disabled")
+                self.clear_button_2.config(state="disabled")
+                self.save_button_1.config(state="disabled")
+                self.save_button_2.config(state="disabled")
+                self.load_button_1.config(state="disabled")
+                self.wavelength_menu.config(state="disabled")
+                self.toggle_button.disable()
+                self.test_duration_entry.config(state="disabled")
 
                 # set the stop button according to sensor use mode
                 if self.recording_enabled:
@@ -402,10 +414,21 @@ class PowerMeterApp:
                 self.power_values_1 = self.plot_y_1
                 self.cam_is_refreshing = False
 
+                # enable buttons
+                self.clear_button_1.config(state="normal")
+                self.clear_button_2.config(state="normal")
+                self.save_button_1.config(state="normal")
+                self.save_button_2.config(state="normal")
+                self.load_button_1.config(state="normal")
+                self.wavelength_menu.config(state="normal")
+                self.toggle_button.enable()
+                self.test_duration_entry.config(state="normal")
+
                 # disable the recording flag if recording
                 if self.recording_enabled:
                     self.recording_enabled = False
                     self.total_saving_duration = None
+                    self.total_saving_duration_entered = False
                     self.toggle_button.toggle()
                 self.start_button.config(text="    Démarrer    ")
 
@@ -414,6 +437,16 @@ class PowerMeterApp:
 
             # process is started
             if not self.cam_is_refreshing:
+
+                # disable buttons
+                self.clear_button_1.config(state="disabled")
+                self.clear_button_2.config(state="disabled")
+                self.save_button_1.config(state="disabled")
+                self.save_button_2.config(state="disabled")
+                self.load_button_1.config(state="disabled")
+                self.wavelength_menu.config(state="disabled")
+                self.toggle_button.disable()
+                self.test_duration_entry.config(state="disabled")
 
                 # set the stop button according to sensor use mode
                 if self.recording_enabled:
@@ -438,11 +471,22 @@ class PowerMeterApp:
                 self.wavelengths_1 = self.plot_x_1
                 self.power_values_1 = self.plot_y_1
                 self.cam_is_refreshing = False
+            
+                # enable buttons
+                self.clear_button_1.config(state="normal")
+                self.clear_button_2.config(state="normal")
+                self.save_button_1.config(state="normal")
+                self.save_button_2.config(state="normal")
+                self.load_button_1.config(state="normal")
+                self.wavelength_menu.config(state="normal")
+                self.toggle_button.enable()
+                self.test_duration_entry.config(state="normal")
 
                 # disable the recording flag if recording
                 if self.recording_enabled:
                     self.recording_enabled = False
                     self.total_saving_duration = None
+                    self.total_saving_duration_entered = False
                     self.toggle_button.toggle()
                 self.start_button.config(text="    Démarrer    ")
 
@@ -690,18 +734,23 @@ class PowerMeterApp:
         """
         dummy function to test the saving functionality
         """
-        try:
-            self.click_clear_1()
-            self.total_saving_duration = float(self.test_duration_entry.get())
-            
-            # set the power graph x-axis to the saving duration
-            self.ax_1.set_xlim(0, self.total_saving_duration)
-            self.canvas_1.draw()
-            print(f" Le puissance-mètre est en mode < Acquisition de données >\n >> La durée d'enregistrement est de {self.total_saving_duration} secondes.")
-        except Exception as e:
-            print(f" Erreur lors de la définition de la durée d'enregistrement: {e}")
-            print(" Durée invalide, la durée doit être un nombre !\n")
-            self.total_saving_duration = None
+        if not self.total_saving_duration_entered and self.recording_enabled:
+            try:
+                self.click_clear_1()
+                self.total_saving_duration = float(self.test_duration_entry.get())
+                
+                # set the power graph x-axis to the saving duration
+                self.ax_1.set_xlim(0, self.total_saving_duration)
+                self.canvas_1.draw()
+                print(f" Le puissance-mètre est en mode < Acquisition de données >\n >> La durée d'enregistrement est de {self.total_saving_duration} secondes.")
+                self.total_saving_duration_entered = True
+            except Exception as e:
+                print(f" Erreur lors de la définition de la durée d'enregistrement: {e}")
+                print(" Durée invalide, la durée doit être un nombre !\n")
+                self.total_saving_duration = None
+                self.total_saving_duration_entered = False
+        else:
+            pass
 
     def save_data(self, save_path):
         """
