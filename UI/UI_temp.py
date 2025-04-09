@@ -313,6 +313,7 @@ class PowerMeterApp:
         # set flags
         self.cam_is_connected = False
         self.cam_is_refreshing = False
+        self.recording_enabled = False
 
         # initialize the powermeter object
         self.pm = None
@@ -335,8 +336,8 @@ class PowerMeterApp:
             print(" Enregistrement activé - Les données seront sauvegardées automatiquement")
 
             # create the test duration label and entry
-            self.test_duration_label.grid(row=2, column=2, padx=10, pady=5, sticky="e")
-            self.test_duration_entry.grid(row=2, column=3, padx=10, pady=5, sticky="we")
+            self.test_duration_label.grid(row=1, column=4, padx=10, pady=5, sticky="e")
+            self.test_duration_entry.grid(row=1, column=5, padx=10, pady=5, sticky="we")
 
             # get saving path
             if not hasattr(self, 'recording_path'):
@@ -402,6 +403,17 @@ class PowerMeterApp:
 
             # process is started
             if not self.cam_is_refreshing:
+
+                # set the stop button according to sensor use mode
+                if self.recording_enabled:
+                    if self.total_saving_duration is not None:
+                        self.start_button.config(text="     Arrêter l'enregistrement      ")
+                    else:
+                        print(" Veuillez spécifier une durée d'enregistrement.")
+                        return
+                else:
+                    self.start_button.config(text="     Arrêter      ")
+
                 print(f" Le capteur est connecté sur le port COM3.")
                 print(" Processus démarré !")
                 self.cam_is_refreshing = True
@@ -409,12 +421,6 @@ class PowerMeterApp:
                 # call update functions in real use mode
                 self.update_loop(test=False)
                 self.update_cam()
-
-                # set the stop button according to sensor use mode
-                if self.recording_enabled:
-                    self.start_button.config(text="     Arrêter l'enregistrement      ")
-                else:
-                    self.start_button.config(text="     Arrêter      ")
 
             # process is stopped
             else:
@@ -434,18 +440,23 @@ class PowerMeterApp:
 
             # process is started
             if not self.cam_is_refreshing:
+
+                # set the stop button according to sensor use mode
+                if self.recording_enabled:
+                    if self.total_saving_duration is not None:
+                        self.start_button.config(text="     Arrêter l'enregistrement      ")
+                    else:
+                        print(" Veuillez spécifier une durée d'enregistrement.")
+                        return
+                else:
+                    self.start_button.config(text="     Arrêter      ")
+
                 self.cam_is_refreshing = True
                 print(" Test démarré !")
 
                 # call update functions in test mode
                 self.update_loop(test=True)
                 self.update_cam()
-
-                # set the stop button according to sensor use mode
-                if self.recording_enabled:
-                    self.start_button.config(text="     Arrêter l'enregistrement      ")
-                else:
-                    self.start_button.config(text="     Arrêter      ")
             
             # process is stopped
             else:
@@ -538,6 +549,9 @@ class PowerMeterApp:
                         # current saving time >= total saving duration
                         else:
                             self.cam_is_refreshing = False
+                            # self.recording_enabled = False
+                            # self.toggle_recording = False
+
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
                             print(" Fin de l'acquisition de données.")
@@ -604,6 +618,9 @@ class PowerMeterApp:
                         # current saving time >= total saving duration
                         else:
                             self.cam_is_refreshing = False
+                            # self.recording_enabled = False
+                            # self.toggle_recording = False
+
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
                             print(" Fin de la génération de données.")
