@@ -60,13 +60,13 @@ class PowerMeter:
     def get_moy_temp(self, half = None) -> np.ndarray:
         if half is None:
             # Retourne la moyenne des températures dans le buffer
-            return np.mean(self.temp_arrays, axis=0)
+            return self.calibrate_temp(np.mean(self.temp_arrays, axis=0))
         elif half == 0:
             # Retourne la moyenne des températures dans la première moitié du buffer
-            return np.mean(self.temp_arrays[:self.buffer_size//2, :, :], axis=0)
+            return self.calibrate_temp(np.mean(self.temp_arrays[:self.buffer_size//2, :, :], axis=0))
         elif half == 1:
             # Retourne la moyenne des températures dans la seconde moitié du buffer
-            return np.mean(self.temp_arrays[self.buffer_size//2:, :, :], axis=0)
+            return self.calibrate_temp(np.mean(self.temp_arrays[self.buffer_size//2:, :, :], axis=0))
         else:
             raise ValueError("half must be 0 or 1")
 

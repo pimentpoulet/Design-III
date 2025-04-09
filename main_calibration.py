@@ -145,9 +145,9 @@ if __name__ == "__main__":
     #main_cal()
     ca = main_fit_cal()
 
+    #pm = PowerMeter()
     #while True:
         #try:
-         #   pm = PowerMeter()
           #  for i in range(32):
            #     sleep(1/30)
             #    pm.update_temperature(pm.get_temp())
