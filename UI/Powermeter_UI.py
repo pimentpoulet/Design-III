@@ -295,7 +295,7 @@ class PowerMeterApp:
         # terminal
         self.log_text = tk.Text(self.term_frame, height=8, width=120, wrap="word", font=font)
         self.log_text.grid(column=0, row=0, sticky="nsew")
-        self.log_text.insert(tk.END, " Journaux d'application initialisés...\n")    # \n Le puissance-mètre est en mode < Utilisation libre >\n")
+        self.log_text.insert(tk.END, " Journaux d'application initialisés...\n\n")    # \n Le puissance-mètre est en mode < Utilisation libre >\n")
 
         # terminal scrollbar
         scrollbar = ttk.Scrollbar(self.term_frame, orient="vertical", command=self.log_text.yview)
@@ -336,27 +336,25 @@ class PowerMeterApp:
 
         # recording enabled
         if state:
-            print(f" state: {state}")
-            print(" Enregistrement activé - Les données seront sauvegardées automatiquement")
 
             # create the test duration label and entry
             self.test_duration_label.grid(row=1, column=4, padx=10, pady=5, sticky="e")
             self.test_duration_entry.grid(row=1, column=5, padx=10, pady=5, sticky="we")
 
             # get saving path
-            if not hasattr(self, 'recording_path'):
-                self.recording_path = filedialog.asksaveasfilename(
-                    defaultextension=".csv",
-                    filetypes=[("CSV Files", "*.csv"), ("Text Files", "*.txt")],
-                    title="Choisir un fichier pour l'enregistrement automatique")
+            self.recording_path = filedialog.asksaveasfilename(
+                defaultextension=".csv",
+                filetypes=[("CSV Files", "*.csv"), ("Text Files", "*.txt")],
+                title="Choisir un fichier pour l'enregistrement automatique")
+            print(f" Enregistrement activé:\n --> Les données seront sauvegardées à {self.recording_path}")
 
-                # configure start button accordingly
-                self.start_button.config(text="     Démarrer l'enregistrement      ")
-                if not self.recording_path:
-                    self.toggle_button.set_state(False)
-                    self.recording_enabled = False
-                    print(" Enregistrement annulé - Aucun chemin spécifié.")
-                    return
+            # configure start button accordingly
+            self.start_button.config(text="     Démarrer l'enregistrement      ")
+            if not self.recording_path:
+                self.toggle_button.set_state(False)
+                self.recording_enabled = False
+                print(" Enregistrement annulé - Aucun chemin spécifié.")
+                return
         else:
             print(" Enregistrement désactivé")
             self.total_saving_duration = None
@@ -452,7 +450,7 @@ class PowerMeterApp:
         """
         checks the camera's connection status
         """
-        print(f"\n Vérification de la connexion avec le capteur...")
+        print(f" Vérification de la connexion avec le capteur...")
         ports = [port.device for port in serial.tools.list_ports.comports()]
 
         # check if the camera is connected to COM3
@@ -525,17 +523,17 @@ class PowerMeterApp:
 
                         # current saving time >= total saving duration
                         else:
-                            self.cam_is_refreshing = False
-                            self.recording_enabled = False
-                            self.toggle_recording = False
-                            self.toggle_button.toggle()
-
-                            self.current_save_duration = 0
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
                             self.save_data(self.recording_path)
                             print(" Fin de l'acquisition de données.")
                             self.start_button.config(text="    Démarrer    ")
+
+                            self.cam_is_refreshing = False
+                            self.recording_enabled = False
+                            self.toggle_recording = False
+                            self.toggle_button.toggle()
+                            self.current_save_duration = 0
                 except Exception as e:
                     print(f" Erreur lors de la prise de mesure: {e}.")
 
@@ -552,17 +550,17 @@ class PowerMeterApp:
                         
                         # current saving time >= total saving duration
                         else:
-                            self.cam_is_refreshing = False
-                            self.recording_enabled = False
-                            self.toggle_recording = False
-                            self.toggle_button.toggle()
-
-                            self.current_save_duration = 0
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
                             self.save_data(self.recording_path)
                             print(" Fin de l'acquisition de données.")
                             self.start_button.config(text="    Démarrer    ")
+
+                            self.cam_is_refreshing = False
+                            self.recording_enabled = False
+                            self.toggle_recording = False
+                            self.toggle_button.toggle()
+                            self.current_save_duration = 0
             # test mode
             else:
                 try:
@@ -602,17 +600,17 @@ class PowerMeterApp:
                         
                         # current saving time >= total saving duration
                         else:
-                            self.cam_is_refreshing = False
-                            self.recording_enabled = False
-                            self.toggle_recording = False
-                            self.toggle_button.toggle()
-
-                            self.current_save_duration = 0
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
                             self.save_data(self.recording_path)
                             print(" Fin de la génération de données.")
                             self.start_button.config(text="    Démarrer    ")
+                            
+                            self.cam_is_refreshing = False
+                            self.recording_enabled = False
+                            self.toggle_recording = False
+                            self.toggle_button.toggle()
+                            self.current_save_duration = 0
                 except Exception as e:
                     print(f" Erreur lors de la génération de données de test: {e}.")
 
@@ -629,17 +627,17 @@ class PowerMeterApp:
                         
                         # current saving time >= total saving duration
                         else:
-                            self.cam_is_refreshing = False
-                            self.recording_enabled = False
-                            self.toggle_recording = False
-                            self.toggle_button.toggle()
-
-                            self.current_save_duration = 0
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
                             self.save_data(self.recording_path)
                             print(" Fin de la génération de données.")
                             self.start_button.config(text="    Démarrer    ")
+
+                            self.cam_is_refreshing = False
+                            self.recording_enabled = False
+                            self.toggle_recording = False
+                            self.toggle_button.toggle()
+                            self.current_save_duration = 0
 
     def update_cam(self):
         """
@@ -823,7 +821,7 @@ class PowerMeterApp:
         self.canvas_1.draw()
 
         # log to terminal
-        print(" Graphique de puissance effacé.")
+        print(" Graphique de puissance précédent effacé.")
 
     def click_clear_2(self):
         """
@@ -842,7 +840,7 @@ class PowerMeterApp:
         self.canvas_2.draw()
 
         # log to terminal
-        print(" Graphique de position effacé.")
+        print(" Graphique de position précédent effacé.")
 
     def on_closing(self):
         print(" Closing the application...")        
