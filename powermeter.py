@@ -82,7 +82,7 @@ class PowerMeter:
         moy_temp = np.mean(temp)
         delta_temp = temp - moy_temp
         total_temp = np.sum(delta_temp)
-        
+
         x_coords, y_coords = np.meshgrid(np.arange(self.cols), np.arange(self.rows))
         x_centroid = np.sum(x_coords * delta_temp) / total_temp
         y_centroid = np.sum(y_coords * delta_temp) / total_temp
@@ -157,11 +157,15 @@ class PowerMeter:
         if c_0 == c_1:
             return c_0
         else:
-            return (c_0[0] + c_1[0]) / 2, (c_0[1] + c_0[1]) / 2
-
-    def get_wavelength(self, params0: tuple, params1: tuple) -> float:
-        """ Retourne la longueur d'onde en fonction des paramètres de la gaussienne 2D 
-        pour deux plaques."""
+            return (c_0[0] + c_1[0]) / 2, (c_0[1] + c_1[1]) / 2
+        
+    def get_power(self, params: tuple, plaque: int) -> float:
+        if plaque not in (0, 1):
+            raise ValueError('plaque must be 0 or 1')
+        p_max = params[plaque][1]
+        p_min = params[plaque][3]
+        p_diff = p_max - p_min
         pass
 
-        
+    def get_wavelength(self, params: tuple) -> float:
+        pass

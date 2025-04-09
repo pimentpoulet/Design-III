@@ -5,6 +5,7 @@ class ToggleButton(tk.Canvas):
     def __init__(self, parent, text_on="Enregistrement activé", text_off="Enregistrement désactivé",
                  height=50, padding=20, bg_color="#D3D3D3", toggle_color="#FFFFFF", 
                  text_color="#FFFFFF", on_color="#34C759", off_color="#D3D3D3", 
+                 disabled_color="#AAAAAA", disabled_toggle_color="#DDDDDD", disabled_text_color="#888888",
                  command=None, initial_state=False, font=("Arial", 12, "bold"), **kwargs):
         
         # Calculate required width based on text length
@@ -16,8 +17,6 @@ class ToggleButton(tk.Canvas):
         temp_label.update_idletasks()
         text_off_width = temp_label.winfo_reqwidth()
         temp_label.destroy()
-        # self.rec_frame = tk.Frame(self.up_glob_frame, highlightbackground="black", highlightthickness=2)
-        # self.rec_frame.grid(row=1, column=0, columnspan=4, padx=25, pady=10, sticky="nsew")
         
         # Set width to accommodate the longer text plus padding
         max_text_width = max(text_on_width, text_off_width)
@@ -34,11 +33,15 @@ class ToggleButton(tk.Canvas):
         self.text_color = text_color
         self.on_color = on_color
         self.off_color = off_color
+        self.disabled_color = disabled_color
+        self.disabled_toggle_color = disabled_toggle_color
+        self.disabled_text_color = disabled_text_color
         self.command = command
         self.is_on = initial_state
         self.text_on = text_on
         self.text_off = text_off
         self.font = font
+        self.enabled = True  # New property to track enabled/disabled state
         
         # Draw initial button state
         self.draw()
@@ -51,10 +54,21 @@ class ToggleButton(tk.Canvas):
         
         # Track/background
         radius = self.height // 2
-        track_color = self.on_color if self.is_on else self.off_color
+        
+        # Select colors based on enabled/disabled state
+        if self.enabled:
+            track_color = self.on_color if self.is_on else self.off_color
+            knob_color = self.toggle_color
+            current_text_color = self.text_color
+            outline_color = "#8E8E93"
+        else:
+            track_color = self.disabled_color
+            knob_color = self.disabled_toggle_color
+            current_text_color = self.disabled_text_color
+            outline_color = "#AAAAAA"
         
         # Create background rounded rectangle
-        self.create_rounded_rect(0, 0, self.width, self.height, radius, fill=track_color, outline="#8E8E93", width=2)
+        self.create_rounded_rect(0, 0, self.width, self.height, radius, fill=track_color, outline=outline_color, width=2)
         
         # Knob position
         if self.is_on:
@@ -65,7 +79,7 @@ class ToggleButton(tk.Canvas):
         # Draw knob
         self.create_oval(knob_x - radius + 4, 4, 
                          knob_x + radius - 4, self.height - 4, 
-                         fill=self.toggle_color, outline="#8E8E93", width=1)
+                         fill=knob_color, outline=outline_color, width=1)
         
         # Calculate text position
         if self.is_on:
@@ -79,16 +93,21 @@ class ToggleButton(tk.Canvas):
             
         # Create text with current state
         self.create_text(text_x, self.height // 2, text=text, 
-                         fill=self.text_color, font=self.font,
+                         fill=current_text_color, font=self.font,
                          anchor="center")
     
     def toggle(self, event=None):
-        self.is_on = not self.is_on
-        self.animate_toggle()
-        if self.command is not None:
-            self.command(self.is_on)
+        # Only allow toggling if the button is enabled
+        if self.enabled:
+            self.is_on = not self.is_on
+            self.animate_toggle()
+            if self.command is not None:
+                self.command(self.is_on)
     
     def animate_toggle(self):
+        if not self.enabled:
+            return  # Skip animation if disabled
+            
         steps = 10
         radius = self.height // 2
         
@@ -188,31 +207,19 @@ class ToggleButton(tk.Canvas):
         if state != self.is_on:
             self.is_on = state
             self.draw()
-
-
-# Example usage
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("Auto-Scaling Toggle Button")
-    root.configure(bg="#F0F0F0")
-    root.geometry("600x200")
     
-    def on_toggle(state):
-        print(f"Toggle state: {'Enregistrement activé' if state else 'Enregistrement désactivé'}")
+    def enable(self):
+        """Enable the toggle button."""
+        if not self.enabled:
+            self.enabled = True
+            self.draw()
     
-    # Create the toggle button
-    toggle = ToggleButton(
-        root, 
-        text_on="Enregistrement activé",
-        text_off="Enregistrement désactivé",
-        height=50,
-        padding=20,
-        off_color="#D3D3D3",  # Light gray for OFF state
-        on_color="#4CD964",   # iOS green for ON state
-        text_color="black",   # Black text for better visibility
-        font=("Arial", 12, "bold"),
-        command=on_toggle
-    )
-    toggle.pack(pady=50)
+    def disable(self):
+        """Disable the toggle button."""
+        if self.enabled:
+            self.enabled = False
+            self.draw()
     
-    root.mainloop()
+    def is_enabled(self):
+        """Return whether the button is enabled."""
+        return self.enabled
