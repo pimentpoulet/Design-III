@@ -150,7 +150,13 @@ class PowerMeter:
         dt = self.buffer_size /2 / (2**(refresh-1))
         P = (self.tau*(p_diff1-p_diff0) / dt + p_diff1)/self.gain
         return P
-        
+    
+    def get_power_wv(self, wv) -> float:
+        """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque
+        selon la longueur d'onde."""
+        pass
+
+
     def get_center(self, params0: tuple, params1: tuple) -> tuple:
         """ Retourne le centre de la gaussienne 2D pour deux cadrillés différents."""
         c_0, c_1 = params0[0], params1[0]
@@ -163,5 +169,10 @@ class PowerMeter:
         """ Retourne la longueur d'onde en fonction des paramètres de la gaussienne 2D 
         pour deux plaques."""
         pass
+
+    def get_center_and_wv(self) -> tuple:
+        """ Retourne le centre de la gaussienne 2D pour deux plaques différentes."""
+        params0, params1 = self.get_gaussian_params(0), self.get_gaussian_params(1)
+        return self.get_center(params0, params1), self.get_wavelength(params0, params1)
 
         
