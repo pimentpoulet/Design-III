@@ -9,6 +9,7 @@ import os
 import time
 import serial
 import serial.tools.list_ports
+import webbrowser
 
 from ToggleButton import ToggleButton
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -73,7 +74,7 @@ class PowerMeterApp:
         font = tkFont.Font(family='Trebuchet MS', size=12)
         font_pw = tkFont.Font(family='Trebuchet MS', size=18)
 
-        # pre_saving matrix initialization
+        # pre_saving matrix initialization  -->  ça c'est trash pour l'instant
         try:
             pre_saving_matrix = np.zeros((24, 32, self.time_duration * 32), dtype=np.float32)
         except:
@@ -288,8 +289,9 @@ class PowerMeterApp:
         """ logo_frame """
 
         # RVLABS logo
-        self.logo = tk.Label(self.logo_frame, image=self.logo_img)
+        self.logo = tk.Label(self.logo_frame, image=self.logo_img, cursor="hand2")
         self.logo.grid(row=0, column=0, sticky="ne")
+        self.logo.bind("<Button-1>", self.open_youtube)
 
         """ other initializations """
 
@@ -934,6 +936,12 @@ class PowerMeterApp:
             print(f" Error closing the application: {e}")
         finally:
             sys.exit(0)
+
+    def open_youtube(self, event):
+        """
+        secret sauce
+        """
+        webbrowser.open("https://www.youtube.com/watch?v=xvFZjo5PgG0")
 
 
 if __name__ == "__main__":
