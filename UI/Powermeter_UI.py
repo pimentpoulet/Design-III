@@ -18,22 +18,6 @@ from time import sleep
 from powermeter_test import PowerMeter_test
 
 
-def load_data():
-    file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
-    if not file_path:
-        return None
-    try:
-        wb = xl.Book(file_path)
-        sheet = wb.sheets[0]
-        raw_data = sheet["A40:A540"].options(np.array, expand="table").value
-        wb.close()
-        split_arr = np.char.split(raw_data, ',')
-        return np.array([x[0] for x in split_arr], dtype=float), np.array([x[1] for x in split_arr], dtype=float), file_path
-    except Exception as e:
-        print(f" Error loading data: {e}")
-        return None
-
-
 def print_grid_info(root):
     for child in root.winfo_children():
         info = child.grid_info()
@@ -247,7 +231,7 @@ class PowerMeterApp:
         """ graph_frame """
 
         # power graph
-        self.fig_1, self.ax_1 = plt.subplots(figsize=(6, 5))
+        self.fig_1, self.ax_1 = plt.subplots(figsize=(10, 5))
         self.canvas_1 = FigureCanvasTkAgg(self.fig_1, master=self.graph_frame)
         self.ax_1.set_xlabel("Temps [s]")
         self.ax_1.set_ylabel("Puissance [mW]")
@@ -261,35 +245,30 @@ class PowerMeterApp:
         self.ax_2.axis("off")
 
         # place graphs
-        self.canvas_1.get_tk_widget().grid(row=0, column=0, columnspan=3, padx=15, pady=10, sticky="nsew")
-        self.canvas_2.get_tk_widget().grid(row=0, column=3, columnspan=2, padx=15, pady=10, sticky="nsew")
+        self.canvas_1.get_tk_widget().grid(row=0, column=0, columnspan=4, padx=15, pady=10, sticky="nsew")
+        self.canvas_2.get_tk_widget().grid(row=0, column=4, columnspan=2, padx=15, pady=10, sticky="nsew")
 
         # clear button 1
         self.clear_button_1 = tk.Button(self.graph_frame, text="Effacer le graphique de puissance",
                                         command=self.click_clear_1,
                                         font=font)
-        self.clear_button_1.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
+        self.clear_button_1.grid(row=1, column=0, columnspan=1, padx=10, pady=10, sticky="ew")
 
         # save button 1
         self.save_button_1 = tk.Button(self.graph_frame, text="Enregistrer les données de puissance",
                                        command=self.save_data, font=font)
-        self.save_button_1.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
-
-        # load button 1
-        self.load_button_1 = tk.Button(self.graph_frame, text="Charger des données de puissance",
-                                       command=lambda: self.display_data_1(load_data()), font=font)
-        self.load_button_1.grid(row=1, column=2, padx=10, pady=10, sticky="ew")
+        self.save_button_1.grid(row=1, column=1, columnspan=1, padx=10, pady=10, sticky="ew")
 
         # clear button 2
         self.clear_button_2 = tk.Button(self.graph_frame, text="Effacer le graphique de position",
                                         command=self.click_clear_2,
                                         font=font)
-        self.clear_button_2.grid(row=1, column=3, padx=10, pady=10, sticky="ew")
+        self.clear_button_2.grid(row=1, column=4, padx=10, pady=10, sticky="ew")
 
         # save button 2
         self.save_button_2 = tk.Button(self.graph_frame, text="Enregistrer l'image actuelle",
                                        command=self.save_cam_data, font=font)
-        self.save_button_2.grid(row=1, column=4, padx=10, pady=10, sticky="ew")
+        self.save_button_2.grid(row=1, column=5, padx=10, pady=10, sticky="ew")
 
         """ term_frame """
 
@@ -358,6 +337,7 @@ class PowerMeterApp:
                 print(" Enregistrement annulé - Aucun chemin spécifié.")
                 return
         else:
+            self.start_button.config(text="     Démarrer      ")
             print(" Enregistrement désactivé")
             self.total_saving_duration = None
             self.total_saving_duration_entered = False
@@ -380,16 +360,6 @@ class PowerMeterApp:
             # process is started
             if not self.cam_is_refreshing:
 
-                # disable buttons
-                self.clear_button_1.config(state="disabled")
-                self.clear_button_2.config(state="disabled")
-                self.save_button_1.config(state="disabled")
-                self.save_button_2.config(state="disabled")
-                self.load_button_1.config(state="disabled")
-                self.wavelength_menu.config(state="disabled")
-                self.toggle_button.disable()
-                self.test_duration_entry.config(state="disabled")
-
                 # set the stop button according to sensor use mode
                 if self.recording_enabled:
                     if self.total_saving_duration is not None:
@@ -399,6 +369,15 @@ class PowerMeterApp:
                         return
                 else:
                     self.start_button.config(text="     Arrêter      ")
+
+                # disable buttons
+                self.clear_button_1.config(state="disabled")
+                self.clear_button_2.config(state="disabled")
+                self.save_button_1.config(state="disabled")
+                self.save_button_2.config(state="disabled")
+                self.wavelength_menu.config(state="disabled")
+                self.toggle_button.disable()
+                self.test_duration_entry.config(state="disabled")
 
                 print(f" Le capteur est connecté sur le port COM3.")
                 print(" Processus démarré !")
@@ -420,7 +399,6 @@ class PowerMeterApp:
                 self.clear_button_2.config(state="normal")
                 self.save_button_1.config(state="normal")
                 self.save_button_2.config(state="normal")
-                self.load_button_1.config(state="normal")
                 self.wavelength_menu.config(state="normal")
                 self.toggle_button.enable()
                 self.test_duration_entry.config(state="normal")
@@ -439,16 +417,6 @@ class PowerMeterApp:
             # process is started
             if not self.cam_is_refreshing:
 
-                # disable buttons
-                self.clear_button_1.config(state="disabled")
-                self.clear_button_2.config(state="disabled")
-                self.save_button_1.config(state="disabled")
-                self.save_button_2.config(state="disabled")
-                self.load_button_1.config(state="disabled")
-                self.wavelength_menu.config(state="disabled")
-                self.toggle_button.disable()
-                self.test_duration_entry.config(state="disabled")
-
                 # set the stop button according to sensor use mode
                 if self.recording_enabled:
                     if self.total_saving_duration is not None:
@@ -458,6 +426,15 @@ class PowerMeterApp:
                         return
                 else:
                     self.start_button.config(text="     Arrêter      ")
+
+                # disable buttons
+                self.clear_button_1.config(state="disabled")
+                self.clear_button_2.config(state="disabled")
+                self.save_button_1.config(state="disabled")
+                self.save_button_2.config(state="disabled")
+                self.wavelength_menu.config(state="disabled")
+                self.toggle_button.disable()
+                self.test_duration_entry.config(state="disabled")
 
                 self.cam_is_refreshing = True
                 print(" Test démarré !")
@@ -478,7 +455,6 @@ class PowerMeterApp:
                 self.clear_button_2.config(state="normal")
                 self.save_button_1.config(state="normal")
                 self.save_button_2.config(state="normal")
-                self.load_button_1.config(state="normal")
                 self.wavelength_menu.config(state="normal")
                 self.toggle_button.enable()
                 self.test_duration_entry.config(state="normal")
@@ -495,7 +471,7 @@ class PowerMeterApp:
         """
         checks the camera's connection status
         """
-        print(f" Vérification de la connexion avec le capteur...")
+        print(f"\n Vérification de la connexion avec le capteur...")
         ports = [port.device for port in serial.tools.list_ports.comports()]
 
         # check if the camera is connected to COM3
@@ -571,8 +547,18 @@ class PowerMeterApp:
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
                             self.save_data(self.recording_path)
+
                             print(" Fin de l'acquisition de données.")
                             self.start_button.config(text="    Démarrer    ")
+
+                            # enable buttons
+                            self.clear_button_1.config(state="normal")
+                            self.clear_button_2.config(state="normal")
+                            self.save_button_1.config(state="normal")
+                            self.save_button_2.config(state="normal")
+                            self.wavelength_menu.config(state="normal")
+                            self.toggle_button.enable()
+                            self.test_duration_entry.config(state="normal")
 
                             self.cam_is_refreshing = False
                             self.recording_enabled = False
@@ -598,8 +584,18 @@ class PowerMeterApp:
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
                             self.save_data(self.recording_path)
+
                             print(" Fin de l'acquisition de données.")
                             self.start_button.config(text="    Démarrer    ")
+
+                            # enable buttons
+                            self.clear_button_1.config(state="normal")
+                            self.clear_button_2.config(state="normal")
+                            self.save_button_1.config(state="normal")
+                            self.save_button_2.config(state="normal")
+                            self.wavelength_menu.config(state="normal")
+                            self.toggle_button.enable()
+                            self.test_duration_entry.config(state="normal")
 
                             self.cam_is_refreshing = False
                             self.recording_enabled = False
@@ -648,8 +644,18 @@ class PowerMeterApp:
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
                             self.save_data(self.recording_path)
+
                             print(" Fin de la génération de données.")
                             self.start_button.config(text="    Démarrer    ")
+
+                            # enable buttons
+                            self.clear_button_1.config(state="normal")
+                            self.clear_button_2.config(state="normal")
+                            self.save_button_1.config(state="normal")
+                            self.save_button_2.config(state="normal")
+                            self.wavelength_menu.config(state="normal")
+                            self.toggle_button.enable()
+                            self.test_duration_entry.config(state="normal")
 
                             self.cam_is_refreshing = False
                             self.recording_enabled = False
@@ -675,8 +681,18 @@ class PowerMeterApp:
                             self.wavelengths_1 = self.plot_x_1
                             self.power_values_1 = self.plot_y_1
                             self.save_data(self.recording_path)
+
                             print(" Fin de la génération de données.")
                             self.start_button.config(text="    Démarrer    ")
+
+                            # enable buttons
+                            self.clear_button_1.config(state="normal")
+                            self.clear_button_2.config(state="normal")
+                            self.save_button_1.config(state="normal")
+                            self.save_button_2.config(state="normal")
+                            self.wavelength_menu.config(state="normal")
+                            self.toggle_button.enable()
+                            self.test_duration_entry.config(state="normal")
 
                             self.cam_is_refreshing = False
                             self.recording_enabled = False
@@ -739,27 +755,39 @@ class PowerMeterApp:
             try:
                 self.click_clear_1()
                 self.total_saving_duration = float(self.test_duration_entry.get())
-                
+
+                if self.total_saving_duration <= 0:
+                    raise ValueError()
+
                 # set the power graph x-axis to the saving duration
                 self.ax_1.set_xlim(0, self.total_saving_duration)
                 self.canvas_1.draw()
                 print(f" Le puissance-mètre est en mode < Acquisition de données >\n >> La durée d'enregistrement est de {self.total_saving_duration} secondes.")
                 self.total_saving_duration_entered = True
-            except Exception as e:
-                print(f" Erreur lors de la définition de la durée d'enregistrement: {e}")
-                print(" Durée invalide, la durée doit être un nombre !\n")
+            except Exception:
+                print(f" Erreur lors de la définition de la durée d'enregistrement: la durée doit être un entier positif >:\\\n")
                 self.total_saving_duration = None
                 self.total_saving_duration_entered = False
         else:
             pass
 
-    def save_data(self, save_path):
+    def save_data(self, save_path=None):
         """
         save the power graph data
         """
         if self.wavelengths_1 is None or self.power_values_1 is None:
             print(" Aucune donnée à enregistrer !")
             return
+
+        # recording disabled
+        if save_path is None:
+            try:
+                save_path = filedialog.asksaveasfilename(defaultextension=".csv",
+                                                         filetypes=[("CSV Files", "*.csv"), ("Text Files", "*.txt")],
+                                                         title="Choisir un fichier pour l'enregistrement automatique"
+                                                         )
+            except Exception as e:
+                print(" Erreur durant la sauvegarde: {e}")
         try:
             with open(save_path, mode="w", newline="") as file:
                 writer = csv.writer(file)
