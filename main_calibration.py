@@ -139,15 +139,75 @@ def reorder_calibration_data() -> np.ndarray:
     np.save("temps_moy.npy", temps_moys)
 
 
+def main_test():
+    p_min = 2.5
+    p_max = 10
+    step = 2.5
+    nb_step = int((p_max-p_min)/step)+1
+    time_per_step = 60
+    name = f'test_{p_min}W-{p_max}W_step{step}W'
+    if not os.path.exists("test_data"):
+        os.mkdir("test_data")
+    os.chdir("test_data")
+    try:
+        # Initialisation de la caméra
+        pm = PowerMeter(5, 10)
+        for i in range(64):
+            try:
+                captured_temp = pm.get_temp()
+                show_image_opencv(captured_temp)
+            except Exception as e:
+                print(f"Unexpected error at frame {frame}: {e}")
+                sleep(1)
+                continue
+        frames_per_step = pm.buffer_size*time_per_step
+        temps_pow = np.zeros((frames_per_step*(nb_step), pm.rows, pm.cols))
+        pows = np.zeros((nb_step))
+        print("Prêt à enregistrer")
+        for i in range(nb_step):
+            pow = (i+1)*step
+            print(f"Calibration pour {pow} W")
+            # input("Appuyez sur une touche lorsque vous êtes prêt à allumer le laser.\n")
+
+            # Calibration
+            for frame in range(frames_per_step):
+                # print(f"Frame {frame}")
+                # if frame == 0:
+                #     print("Début de l'enregistrement.")
+                try:
+                    captured_temp = pm.get_temp()
+                    show_image_opencv(captured_temp)
+                    temps_pow[i*frames_per_step+frame,:,:] = captured_temp
+                    
+                except Exception as e:
+                    print(f"Unexpected error at frame {frame}: {e}")
+                    sleep(1)
+                    continue
+
+            # Sauvegarde des données
+            np.save(f"{name}_temps_pow.npy", temps_pow)
+            pows[i] = pow
+            np.save(f"{name}_pows.npy", pows)
+
+    except Exception as e:
+        print(f"Unexpected error during test: {e}")
+
+    os.chdir("..")
+    print("Test terminée")
+
 if __name__ == "__main__":
+    main_test()
+    #pows = np.load('test_data/test_2.5W-10W_step2.5W_temps_pow.npy')
+    #print(pows)
+    
     # reorder_calibration_data()
 
     #main_cal()
-    ca = main_fit_cal()
+    # ca = main_fit_cal()
 
+    #pm = PowerMeter()
     #while True:
         #try:
-         #   pm = PowerMeter()
           #  for i in range(32):
            #     sleep(1/30)
             #    pm.update_temperature(pm.get_temp())
