@@ -59,6 +59,7 @@ class PowerMeterApp:
         self.root = root
         self.root.title("Powermeter UI")
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.root.configure(background = "red")
 
         logo_path = r"UI\RVLABS_logo.png"
         image = Image.open(logo_path)
@@ -113,23 +114,23 @@ class PowerMeterApp:
 
         # acquisition frame
         self.acq_frame = tk.Frame(self.up_glob_frame, highlightbackground="black", highlightthickness=2)
-        self.acq_frame.grid(row=0, column=0, columnspan=1, padx=25, pady=10, sticky="nsw")
+        self.acq_frame.grid(row=0, column=0, columnspan=1, padx=15, pady=5, sticky="nsw")
 
         # measures frame
         self.meas_frame = tk.Frame(self.up_glob_frame, highlightbackground="black", highlightthickness=2)
-        self.meas_frame.grid(row=0, column=2, columnspan=2, padx=25, pady=10, sticky="nsew")
+        self.meas_frame.grid(row=0, column=2, columnspan=2, padx=15, pady=5, sticky="nsew")
 
         # graphs frame
         self.graph_frame = tk.Frame(self.mid_glob_frame, highlightbackground="black", highlightthickness=2)
-        self.graph_frame.grid(row=0, column=0, rowspan=2, columnspan=5, padx=25, pady=10, sticky="nsew")
+        self.graph_frame.grid(row=0, column=0, rowspan=2, columnspan=5, padx=15, pady=5, sticky="nsew")
 
         # terminal frame
         self.term_frame = tk.Frame(self.lw_glob_frame, highlightbackground="black", highlightthickness=2)
-        self.term_frame.grid(row=0, column=0, rowspan=2, columnspan=2, padx=25, pady=10, sticky="nsew")
+        self.term_frame.grid(row=0, column=0, rowspan=2, columnspan=2, padx=15, pady=5, sticky="nsew")
 
         # logo frame
         self.logo_frame = tk.Frame(self.lw_glob_frame, highlightbackground="black", highlightthickness=2)
-        self.logo_frame.grid(row=0, column=2, columnspan=2, padx=25, pady=10)
+        self.logo_frame.grid(row=0, column=2, columnspan=2, padx=15, pady=5)
         self.logo_frame.configure(width=300, height=150)
 
         """ configure frames """
@@ -464,14 +465,14 @@ class PowerMeterApp:
                 # call update functions in test mode
                 self.update_loop(test=True)
                 self.update_cam()
-            
+
             # process is stopped
             else:
                 print(" Test arrêté !")
                 self.wavelengths_1 = self.plot_x_1
                 self.power_values_1 = self.plot_y_1
                 self.cam_is_refreshing = False
-            
+
                 # enable buttons
                 self.clear_button_1.config(state="normal")
                 self.clear_button_2.config(state="normal")
@@ -547,7 +548,7 @@ class PowerMeterApp:
                         self.canvas_1.draw()
                         self.pw_measurement_label.config(text=f"{mean_temp:.2f} mW")
                         self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
-                    
+
                     # recording enabled
                     else:
                         self.plot_x_1.append(last)
@@ -591,7 +592,7 @@ class PowerMeterApp:
                         if self.current_save_duration < self.total_saving_duration:
                             self.current_save_duration += self.power_time_inc / 1000
                             self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
-                        
+
                         # current saving time >= total saving duration
                         else:
                             self.wavelengths_1 = self.plot_x_1
@@ -624,7 +625,7 @@ class PowerMeterApp:
                         self.canvas_1.draw()
                         self.pw_measurement_label.config(text=f"{mean_test_temp:.2f} mW")
                         self.root.after(self.power_time_inc, lambda: self.update_loop(test=True))
-                    
+
                     # recording enabled
                     else:
                         self.plot_x_1.append(last)
@@ -641,7 +642,7 @@ class PowerMeterApp:
                         if self.current_save_duration < self.total_saving_duration:
                             self.current_save_duration += self.power_time_inc / 1000
                             self.root.after(self.power_time_inc, lambda: self.update_loop(test=True))
-                        
+
                         # current saving time >= total saving duration
                         else:
                             self.wavelengths_1 = self.plot_x_1
@@ -649,7 +650,7 @@ class PowerMeterApp:
                             self.save_data(self.recording_path)
                             print(" Fin de la génération de données.")
                             self.start_button.config(text="    Démarrer    ")
-                            
+
                             self.cam_is_refreshing = False
                             self.recording_enabled = False
                             self.toggle_recording = False
@@ -661,14 +662,14 @@ class PowerMeterApp:
                     # recording disabled --> call the update_loop function again in test mode
                     if self.total_saving_duration is None:
                         self.root.after(self.power_time_inc, lambda: self.update_loop(test=True))
-                    
+
                     # recording enabled
                     else:
                         # current saving time < total saving duration
                         if self.current_save_duration < self.total_saving_duration:
                             self.current_save_duration += self.power_time_inc / 1000
                             self.root.after(self.power_time_inc, lambda: self.update_loop(test=True))
-                        
+
                         # current saving time >= total saving duration
                         else:
                             self.wavelengths_1 = self.plot_x_1
