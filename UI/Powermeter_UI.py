@@ -319,25 +319,29 @@ class PowerMeterApp:
 
         # recording enabled
         if state:
+            try:
+                # get saving path
+                self.recording_path = filedialog.asksaveasfilename(
+                    defaultextension=".csv",
+                    filetypes=[("CSV Files", "*.csv"), ("Text Files", "*.txt")],
+                    title="Choisir un fichier pour l'enregistrement automatique")
 
-            # create the test duration label and entry
-            self.test_duration_label.grid(row=1, column=4, padx=10, pady=5, sticky="e")
-            self.test_duration_entry.grid(row=1, column=5, padx=10, pady=5, sticky="we")
+                if not self.recording_path:
+                    self.toggle_button.set_state(False)
+                    self.recording_enabled = False
+                    print(" Enregistrement annulé - Aucun chemin spécifié.")
+                    return
+                else:
+                    print(f" Enregistrement activé:\n --> Les données seront sauvegardées à {self.recording_path}")
+                    
+                    # create the test duration label and entry
+                    self.test_duration_label.grid(row=1, column=4, padx=10, pady=5, sticky="e")
+                    self.test_duration_entry.grid(row=1, column=5, padx=10, pady=5, sticky="we")
 
-            # get saving path
-            self.recording_path = filedialog.asksaveasfilename(
-                defaultextension=".csv",
-                filetypes=[("CSV Files", "*.csv"), ("Text Files", "*.txt")],
-                title="Choisir un fichier pour l'enregistrement automatique")
-            print(f" Enregistrement activé:\n --> Les données seront sauvegardées à {self.recording_path}")
-
-            # configure start button accordingly
-            self.start_button.config(text="     Démarrer l'enregistrement      ")
-            if not self.recording_path:
-                self.toggle_button.set_state(False)
-                self.recording_enabled = False
-                print(" Enregistrement annulé - Aucun chemin spécifié.")
-                return
+                    # configure start button accordingly
+                    self.start_button.config(text="     Démarrer l'enregistrement      ")
+            except Exception as e:
+                print(f" Erreur lors de la sélection du chemin d'enregistrement: {e}")
         else:
             self.start_button.config(text="     Démarrer      ")
             print(" Enregistrement désactivé")
@@ -411,6 +415,9 @@ class PowerMeterApp:
                     self.total_saving_duration = None
                     self.total_saving_duration_entered = False
                     self.toggle_button.toggle()
+
+                    # reset the current saving counter
+                    self.current_save_duration = 0
                 self.start_button.config(text="    Démarrer    ")
 
         # camera is disconnected
@@ -467,6 +474,9 @@ class PowerMeterApp:
                     self.total_saving_duration = None
                     self.total_saving_duration_entered = False
                     self.toggle_button.toggle()
+
+                    # reset the current saving counter
+                    self.current_save_duration = 0
                 self.start_button.config(text="    Démarrer    ")
 
     def check_connection(self):
@@ -736,7 +746,7 @@ class PowerMeterApp:
                         self.ax_2.set_title("Image thermique")
                         self.ax_2.axis("off")
                         self.canvas_2.draw()
-                        self.save_cam_image(self.camera_data)
+                        # self.save_cam_data(self.camera_data)
                         self.root.after(self.cam_time_inc, self.update_cam)
                     except Exception as e:
                         print(f" Erreur lors de l'enregistrement des données de la caméra: {e}.")
@@ -755,7 +765,7 @@ class PowerMeterApp:
         """
         if not self.total_saving_duration_entered and self.recording_enabled:
             try:
-                self.click_clear_1()
+                self.click_clear_1(logs=False)
                 self.total_saving_duration = float(self.test_duration_entry.get())
 
                 if self.total_saving_duration <= 0:
@@ -764,12 +774,35 @@ class PowerMeterApp:
                 # set the power graph x-axis to the saving duration
                 self.ax_1.set_xlim(0, self.total_saving_duration)
                 self.canvas_1.draw()
+
+                # print logs
                 print(f" Le puissance-mètre est en mode < Acquisition de données >\n >> La durée d'enregistrement est de {self.total_saving_duration} secondes.")
                 self.total_saving_duration_entered = True
             except Exception:
                 print(f" Erreur lors de la définition de la durée d'enregistrement: la durée doit être un entier positif >:\\\n")
                 self.total_saving_duration = None
                 self.total_saving_duration_entered = False
+
+        # the total duration has already been entered but a new one is set
+        elif self.total_saving_duration_entered and self.recording_enabled and not self.cam_is_refreshing:
+            try:
+                self.click_clear_1(logs=False)
+                self.total_saving_duration = float(self.test_duration_entry.get())
+
+                if self.total_saving_duration <= 0:
+                    raise ValueError()
+
+                # set the power graph x-axis to the saving duration
+                self.ax_1.set_xlim(0, self.total_saving_duration)
+                self.canvas_1.draw()
+
+                # print logs
+                print(f" >> La nouvelle durée d'enregistrement est de {self.total_saving_duration} secondes.")
+                self.total_saving_duration_entered = True
+            except Exception:
+                print(f" Erreur lors de la définition de la durée d'enregistrement: la durée doit être un entier positif >:\\\n")
+                self.total_saving_duration = None
+                self.total_saving_duration_entered = True
         else:
             pass
 
@@ -805,33 +838,28 @@ class PowerMeterApp:
         saves the current frame of the camera to the saved_test_data folder
         """
         if self.pm.dev is not None:
-            if self.cam_is_refreshing:
-                try:
-                    folder_path = r"UI\saved_test_data"
-                    num_files = len([f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))])
-                    save_path = os.path.join(folder_path, f"{time.strftime("%Y_%m_%d")}_{num_files}_camera_data.npy")
+            try:
+                folder_path = filedialog.askdirectory(
+                    title="Choisir un dossier pour l'enregistrement"
+                )
+
+                if folder_path:  # Check if user selected a folder
+                    num_files = len([
+                        f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))
+                    ])
+                    # Create a proper filename
+                    filename = f"{time.strftime('%Y_%m_%d')}_{num_files}_camera_data.npy"
+                    save_path = os.path.join(folder_path, filename)
+
+                    # Save the camera data
                     np.save(save_path, self.camera_data)
-                    print(f" Image enregistrée !")
-                except Exception as e:
-                    print(f" Erreur lors de la sauvegarde de l'image: {e}.")
+                    print(f" Image enregistrée dans {save_path}")
+                else:
+                    print(" Aucun dossier sélectionné.")
+            except Exception as e:
+                print(f" Erreur lors de la sauvegarde de l'image: {e}.")
         else:
             print(" Il n'y a pas d'image à enregistrer !")
-
-    def save_cam_image(self, camera_data):
-        """
-        saves the sequence of images from the camera as a 24x32x(32*test_duration (sec.)) matrix
-        """
-        try:
-            current_saved_cam_array= np.concatenate(self.pre_saving_matrix, camera_data, axis=2)
-            if current_saved_cam_array.shape[2] > 32 * self.total_saving_duration:
-                current_saved_cam_array = np.delete(current_saved_cam_array, 0, axis=2)
-            self.pre_saving_matrix = current_saved_cam_array
-            folder_path = r"UI\saved_camera_data"
-            num_files = len([f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))])
-            save_path = os.path.join(folder_path, f"{time.strftime("%Y_%m_%d")}_{num_files}_camera_data.npy")
-            np.save(save_path, self.pre_saving_matrix)
-        except Exception as e:
-            print(f" Erreur lors de la sauvegarde de l'image: {e}.")
 
     def on_wavelength_selected(self, event=None):
         """
@@ -882,7 +910,7 @@ class PowerMeterApp:
         # log to terminal
         print(f" Fichier chargé: {str(file_path)}")
 
-    def click_clear_1(self):
+    def click_clear_1(self, logs=True):
         """
         clears the plot
         """
@@ -901,7 +929,8 @@ class PowerMeterApp:
         self.canvas_1.draw()
 
         # log to terminal
-        print(" Graphique de puissance précédent effacé.")
+        if logs:
+            print(" Graphique de puissance précédent effacé.")
 
     def click_clear_2(self):
         """
