@@ -291,7 +291,7 @@ class PowerMeterApp:
         # RVLABS logo
         self.logo = tk.Label(self.logo_frame, image=self.logo_img, cursor="hand2")
         self.logo.grid(row=0, column=0, sticky="ne")
-        self.logo.bind("<Button-1>", self.open_youtube)
+        self.logo.bind("<Button-1>", self.secret_sauce)
 
         """ other initializations """
 
@@ -937,11 +937,17 @@ class PowerMeterApp:
         finally:
             sys.exit(0)
 
-    def open_youtube(self, event):
+    def secret_sauce(self, event):
         """
         secret sauce
         """
         webbrowser.open("https://www.youtube.com/watch?v=xvFZjo5PgG0")
+
+        image_path = r"UI\secret_sauce.jpg"
+        try:
+            os.startfile(image_path)
+        except Exception as e:
+            print(f"Erreur lors de l'ouverture de l'image : {e}")
 
 
 if __name__ == "__main__":
