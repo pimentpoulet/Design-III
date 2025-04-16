@@ -28,11 +28,13 @@ def print_grid_info(root):
 
 class TextRedirector:
     def __init__(self, text_widget):
-        self.text_widget = text_widget
+        self.terminal = text_widget
 
     def write(self, message):
-        self.text_widget.insert(tk.END, message)
-        self.text_widget.see(tk.END)
+        self.terminal.configure(state='normal')
+        self.terminal.insert(tk.END, message)
+        self.terminal.see(tk.END)
+        self.terminal.configure(state='disabled')
 
     def flush(self):
         pass
@@ -276,7 +278,9 @@ class PowerMeterApp:
         # terminal
         self.log_text = tk.Text(self.term_frame, height=8, width=120, wrap="word", font=font)
         self.log_text.grid(column=0, row=0, sticky="nsew")
-        self.log_text.insert(tk.END, " Journaux d'application initialisés...\n\n")    # \n Le puissance-mètre est en mode < Utilisation libre >\n")
+        self.log_text.insert(tk.END, " Journaux d'application initialisés...\n")
+        self.log_text.bind("<Key>", lambda e: "break")
+        self.log_text.bind("<Button-1>", lambda e: "break")
 
         # terminal scrollbar
         scrollbar = ttk.Scrollbar(self.term_frame, orient="vertical", command=self.log_text.yview)
@@ -521,7 +525,7 @@ class PowerMeterApp:
             if not test:
                 try:
                     # get the mean temperature from the powermeter
-                    mean_temp = np.mean(self.pm.get_temp())
+                    mean_temp = np.nanmax(self.pm.get_temp())
                     last = len(self.plot_x_1) if hasattr(self, 'plot_x_1') else 0
 
                     # recording disabled
