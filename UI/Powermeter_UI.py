@@ -17,6 +17,7 @@ from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
 from time import sleep
 from powermeter_test import PowerMeter_test
+from matplotlib.patches import Circle
 
 
 def print_grid_info(root):
@@ -60,6 +61,7 @@ class PowerMeterApp:
         self.power_values_1 = None
         self.wavelengths_2 = None
         self.power_values_2 = None
+        self.position_tuple = (0, 0)
         self.last_selected_wavelength = ""
         self.current_values = [450, 976, 1976]
 
@@ -75,13 +77,6 @@ class PowerMeterApp:
         # fonts
         font = tkFont.Font(family='Trebuchet MS', size=12)
         font_pw = tkFont.Font(family='Trebuchet MS', size=18)
-
-        # pre_saving matrix initialization  -->  ça c'est trash pour l'instant
-        try:
-            pre_saving_matrix = np.zeros((24, 32, self.time_duration * 32), dtype=np.float32)
-        except:
-            self.pre_saving_matrix = None
-            pass
 
         """ global frames """
 
@@ -222,7 +217,7 @@ class PowerMeterApp:
         # power measurement display
         self.power_label = tk.Label(self.meas_frame, text="Puissance mesurée [W]:", font=font_pw)
         self.power_label.grid(row=0, column=1, padx=15, pady=10, sticky="e")
-        self.pw_measurement_label = tk.Label(self.meas_frame, text="---", font=font_pw)
+        self.pw_measurement_label = tk.Label(self.meas_frame, text="----", font=font_pw)
         self.pw_measurement_label.grid(row=0, column=2, padx=0, pady=10, sticky="w")
 
         # wavelength measurement display
@@ -230,6 +225,11 @@ class PowerMeterApp:
         self.wv_label.grid(row=1, column=1, padx=15, pady=10, sticky="e")
         self.wv_measurement_label = tk.Label(self.meas_frame, text="----", font=font_pw)
         self.wv_measurement_label.grid(row=1, column=2, padx=0, pady=10, sticky="w")
+
+        self.pos_label = tk.Label(self.meas_frame, text="Position du faisceau:", font=font_pw)
+        self.pos_label.grid(row=0, column=3, padx=15, pady=10, sticky="e")
+        self.pos_measurement_label = tk.Label(self.meas_frame, text="----", font=font_pw)
+        self.pos_measurement_label.grid(row=1, column=3, padx=0, pady=10)
 
         """ graph_frame """
 
@@ -244,9 +244,18 @@ class PowerMeterApp:
         # position graph
         self.fig_2, self.ax_2 = plt.subplots(figsize=(5, 5))
         self.canvas_2 = FigureCanvasTkAgg(self.fig_2, master=self.graph_frame)
-        self.ax_2.set_title("Image thermique")
-        self.ax_2.axis("off")
 
+        self.ax_2.set_title("Position du faisceau")
+        self.ax_2.set_xlabel("Position [mm]")
+        self.ax_2.set_ylabel("Position [mm]")
+
+        circle = Circle((0, 0), 12.5, color='black', fill=False)
+        self.ax_2.add_patch(circle)
+        self.ax_2.set_xlim(-13.5, 13.5)
+        self.ax_2.set_ylim(-13.5, 13.5)
+        self.ax_2.set_aspect("equal")
+        self.ax_2.grid(True)
+        
         # place graphs
         self.canvas_1.get_tk_widget().grid(row=0, column=0, columnspan=4, padx=15, pady=10, sticky="nsew")
         self.canvas_2.get_tk_widget().grid(row=0, column=4, columnspan=2, padx=15, pady=10, sticky="nsew")
@@ -729,12 +738,14 @@ class PowerMeterApp:
                 # process is started
                 if self.cam_is_refreshing:
                     try:
-                        self.camera_data = self.pm.get_temp()
-                        self.ax_2.clear()
-                        self.ax_2.imshow(self.camera_data, cmap="plasma")
-                        self.ax_2.set_title("Image thermique")
-                        self.ax_2.axis("off")
-                        self.canvas_2.draw()
+                        # update the position graph
+                        self.position_tuple = self.pm.get_temp()    # ligne à changer pour avoir la position en forme de tuple
+                        self.display_position(self.position_tuple)
+
+                        # update position label
+                        self.pos_measurement_label.config(text=f"[{self.position_tuple[0]:.2f}:{self.position_tuple[1]:.2f}]")
+
+                        # update the position graph continuously
                         self.root.after(self.cam_time_inc, self.update_cam)
                     except Exception as e:
                         print(f" Erreur lors de la mise à jour de la caméra: {e}.")
@@ -744,24 +755,21 @@ class PowerMeterApp:
                 # process is started
                 if self.cam_is_refreshing:
                     try:
-                        self.camera_data = self.pm.get_temp()
-                        self.ax_2.clear()
-                        self.ax_2.imshow(self.camera_data, cmap="plasma")
-                        self.ax_2.set_title("Image thermique")
-                        self.ax_2.axis("off")
-                        self.canvas_2.draw()
-                        # self.save_cam_data(self.camera_data)
+                        # update the position graph
+                        self.position_tuple = self.pm.get_temp()    # ligne à changer pour avoir la position en forme de tuple
+                        self.display_position(self.position_tuple)
+
+                        # update position label
+                        self.pos_measurement_label.config(text=f"[{self.position_tuple[0]:.2f}:{self.position_tuple[1]:.2f}]")
+
+                        # update the position graph continuously
                         self.root.after(self.cam_time_inc, self.update_cam)
                     except Exception as e:
                         print(f" Erreur lors de l'enregistrement des données de la caméra: {e}.")
 
         # camera is disconnected
         else:
-            self.ax_2.clear()
-            self.ax_2.imshow(np.zeros((self.pm.rows, self.pm.cols), dtype=np.float32), cmap="plasma")
-            self.ax_2.set_title("Image thermique")
-            self.ax_2.axis("off")
-            self.canvas_2.draw()
+            self.click_clear_2()
 
     def display_saving_time(self, event=None):
         """
@@ -914,6 +922,31 @@ class PowerMeterApp:
         # log to terminal
         print(f" Fichier chargé: {str(file_path)}")
 
+    def display_position(self, position_tuple):
+        """
+        draws the coordinate on the position graph
+        """
+        if position_tuple is None:
+            return
+
+        # assert tuple is valid        
+        assert all(isinstance(axis, float) for axis in position_tuple)
+        assert all((-6 <= axis <= 6) for axis in position_tuple)
+
+        self.click_clear_2()
+
+        x_pos, y_pos = position_tuple[0], position_tuple[1]
+
+        # plot the position dot and circle
+        self.ax_2.scatter(x_pos, y_pos, s=5, color="black")
+        pos_circle = Circle((x_pos, y_pos), 0.75, color='black', fill=False)
+        self.ax_2.add_patch(pos_circle)
+
+        # place grid in the background
+        self.ax_2.grid(True)
+        self.ax_2.set_axisbelow(True)
+        self.canvas_2.draw()
+
     def click_clear_1(self, logs=True):
         """
         clears the plot
@@ -944,11 +977,20 @@ class PowerMeterApp:
         self.plot_y_2 = []
         self.ax_2.clear()
 
+        self.ax_2.set_title("Position du faisceau")
         self.ax_2.set_xlabel("Position [mm]")
         self.ax_2.set_ylabel("Position [mm]")
-        self.ax_2.set_xlim(-6, 6)
-        self.ax_2.set_ylim(-6, 6)
+
+        # graph the sensor's area
+        circle = Circle((0, 0), 12.5, color='black', fill=False)
+        self.ax_2.add_patch(circle)
+        self.ax_2.set_xlim(-13.5, 13.5)
+        self.ax_2.set_ylim(-13.5, 13.5)
+        self.ax_2.set_aspect("equal")
+
+        # place grid in the background
         self.ax_2.grid(True)
+        self.ax_2.set_axisbelow(True)
 
         self.canvas_2.draw()
 
