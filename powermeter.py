@@ -8,15 +8,17 @@ from scipy.signal import savgol_filter
 
 
 class PowerMeter_nocam:
-    def __init__(self, gain: float, tau: float, buffer_size: int=32, time_series: int=16):
+    def __init__(self, gain: float=0.5, tau: float=0.1, offset: float= 26, buffer_size: int=32, time_series: int=30, ref_temp: int=100):
         # Initialisation de la structure de données
         self.rows, self.cols = 24, 32
         self.gain = gain
         self.tau = tau
+        self.offset = offset
         self.buffer_size = buffer_size
         self.temp_arrays = np.zeros((self.buffer_size, self.rows, self.cols), dtype=np.float32)
         self.time_series = time_series
         self.time_series_array = np.zeros((self.time_series), dtype=np.float32)
+        self.ref_temp = ref_temp
         try:
             self.coeffs_array = np.load("coeffs_range20.0-150.0_jump5.0.npy")
         except FileNotFoundError as e:
@@ -44,20 +46,27 @@ class PowerMeter_nocam:
         self.time_series_array[0] = time_series
 
     def filter_time_series(self, time_series: None) -> np.ndarray:
+        print(time_series)
         if time_series is not None:
             self.update_time_series(time_series)
-        return savgol_filter(self.time_series_array, 8, 3, mode='nearest')[-1]
+        filt = savgol_filter(self.time_series_array, 15, 4, mode='nearest')[-1]
+        print(filt)
+        return filt
+        # return savgol_filter(self.time_series_array, 15, 4, mode='nearest')[-1]
 
     def get_moy_temp(self, half = None) -> np.ndarray:
         if half is None:
             # Retourne la moyenne des températures dans le buffer
             return self.calibrate_temp(np.mean(self.temp_arrays, axis=0))
+            # return np.mean(self.temp_arrays, axis=0)
         elif half == 0:
             # Retourne la moyenne des températures dans la première moitié du buffer
             return self.calibrate_temp(np.mean(self.temp_arrays[:self.buffer_size//2, :, :], axis=0))
+            # return np.mean(self.temp_arrays[:self.buffer_size//2, :, :], axis=0)
         elif half == 1:
             # Retourne la moyenne des températures dans la seconde moitié du buffer
             return self.calibrate_temp(np.mean(self.temp_arrays[self.buffer_size//2:, :, :], axis=0))
+            # return np.mean(self.temp_arrays[self.buffer_size//2:, :, :], axis=0)
         else:
             raise ValueError("half must be 0 or 1")
 
@@ -70,43 +79,43 @@ class PowerMeter_nocam:
     
     def filter_temp(self, temp_array: np.ndarray) -> np.ndarray:
         # Enlève les pixels aberrants et le bruit plus fin
-        filtered_temp = np.copy(temp_array)
-        # filtered_temp = median_filter(np.copy(temp_array), size=3)
+        # filtered_temp = np.copy(temp_array)
+        filtered_temp = median_filter(np.copy(temp_array), size=3)
 
-        mean_local = uniform_filter(filtered_temp, size=3)
-        diff = filtered_temp - mean_local
-        std_local = np.sqrt(uniform_filter(diff**2, size=3))
-        z_score = np.abs(diff) / (std_local+1e-6)
-        filtered_temp[z_score > 2.4] = np.nan
+        # mean_local = uniform_filter(filtered_temp, size=3)
+        # diff = filtered_temp - mean_local
+        # std_local = np.sqrt(uniform_filter(diff**2, size=3))
+        # z_score = np.abs(diff) / (std_local+1e-6)
+        # filtered_temp[z_score > 2.5] = np.nan
 
         # Applique un filtre gaussien
-        # filtered_temp = gaussian_filter(filtered_temp, sigma=1.5)
+        filtered_temp = gaussian_filter(filtered_temp, sigma=1)
         return filtered_temp
 
-    def calc_centroid(self) -> tuple:
-        temp = self.get_moy_temp()
-        moy_temp = np.mean(temp)
-        delta_temp = temp - moy_temp
-        total_temp = np.sum(delta_temp)
+    # def calc_centroid(self) -> tuple:
+    #     temp = self.get_moy_temp()
+    #     moy_temp = np.mean(temp)
+    #     delta_temp = temp - moy_temp
+    #     total_temp = np.sum(delta_temp)
 
-        x_coords, y_coords = np.meshgrid(np.arange(self.cols), np.arange(self.rows))
-        x_centroid = np.sum(x_coords * delta_temp) / total_temp
-        y_centroid = np.sum(y_coords * delta_temp) / total_temp
-        return (x_centroid, y_centroid)
+    #     x_coords, y_coords = np.meshgrid(np.arange(self.cols), np.arange(self.rows))
+    #     x_centroid = np.sum(x_coords * delta_temp) / total_temp
+    #     y_centroid = np.sum(y_coords * delta_temp) / total_temp
+    #     return (x_centroid, y_centroid)
 
-    def find_circle(self):
-        temp = self.get_moy_temp()
-        circles = cv2.HoughCircles(temp, cv2.HOUGH_GRADIENT, 1, 20, param1=50, param2=30, minRadius=2, maxRadius=16)
-        if circles is not None:
-            circles = np.uint16(np.around(circles))
-            return circles[0,0]
-        else:
-            return self.calc_centroid()
+    # def find_circle(self):
+    #     temp = self.get_moy_temp()
+    #     circles = cv2.HoughCircles(temp, cv2.HOUGH_GRADIENT, 1, 20, param1=50, param2=30, minRadius=2, maxRadius=16)
+    #     if circles is not None:
+    #         circles = np.uint16(np.around(circles))
+    #         return circles[0,0]
+    #     else:
+    #         return self.calc_centroid()
 
-    def temp_gradient(self):
-        temp = self.get_moy_temp()
-        dx, dy = np.gradient(temp)
-        return dx, dy
+    # def temp_gradient(self):
+    #     temp = self.get_moy_temp()
+    #     dx, dy = np.gradient(temp)
+    #     return dx, dy
 
     def find_max_temp_index(self):
         temp = self.get_moy_temp()
@@ -118,7 +127,7 @@ class PowerMeter_nocam:
         grid = np.empty((self.rows, self.cols))
         grid[:,:] = np.nan
         ind = np.indices(grid.shape)
-        grid[((ind[0]) // sq_size + (ind[1]) // sq_size) % 2 == odd_even] = 1
+        grid[((ind[0]-2) // sq_size + (ind[1]-1) // sq_size) % 2 == odd_even] = 1
         return grid
 
     def gaussian2D(self, xy, h_0, h_1, amp, k, sigma):
@@ -135,27 +144,39 @@ class PowerMeter_nocam:
                             ,nan_policy='omit')
         return params, cov
 
-    def get_gaussian_params(self, odd_even: int, half = None) -> tuple:
+    def get_gaussian_params(self, odd_even = None, half = None) -> tuple:
         """ Donne les paramètres de la gaussienne 2D pour un cadrillé qui dépend de
-        odd_even et pour la moitié du buffer choisie (half: 0 ou 1) ou l'ensemble du
-         buffer (half: None)."""
-        temp = self.filter_temp(self.get_moy_temp(half))
-        # grid = self.checkers_grid(4, odd_even)*temp
-        params, cov = self.fit_2Dgauss(temp)
+        odd_even (None toute la plaque, 0 plaque dessus et 1 plaque dessous) et pour la moitié du buffer 
+        choisie (half: 0 ou 1) ou l'ensemble du buffer (half: None)."""
+        temp = self.get_moy_temp(half)
+        # temp = self.calibrate_temp(self.filter_temp(self.get_moy_temp(half)))
+        if odd_even is None:
+            grid = temp
+        else:
+            grid = self.checkers_grid(3, odd_even)*temp
+        params, cov = self.fit_2Dgauss(grid)
         c = params[:2]
         amp= params[2]
         k = params[3]
         sigma = params[4]
         return (c, amp, k, sigma), cov
     
-    def get_power(self, plaque: int = 0) -> float:
+    def get_power(self) -> float:
         """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
-        params0, cov1, params1, cov2 = self.get_gaussian_params(plaque, 0), self.get_gaussian_params(plaque, 1)
+        try:
+            params0, cov1, params1, cov2 = self.get_gaussian_params(half=0), self.get_gaussian_params(half=1)
+        except Exception as e:
+            print(f"Erreur: Impossible de récupérer les paramètres de la gaussienne --> {e}.")
+            return None, None
+        thresh = 0.5
+        if np.mean(cov1) > thresh or np.mean(cov2) > thresh:
+            print("Erreur: La covariance est trop élevée.")
+            return 0.0, 0.0
         p_diff0, p_diff1 = params0[1], params1[1]
         refresh = 6
         dt = self.buffer_size /2 / (2**(refresh-1))
         P = (self.tau*(p_diff1-p_diff0) / dt + p_diff1)*self.gain
-        return P
+        return P, (params0, params1)
         
     def get_center(self, params0: tuple, params1: tuple) -> tuple:
         """ Retourne le centre de la gaussienne 2D pour deux cadrillés différents."""
@@ -164,9 +185,26 @@ class PowerMeter_nocam:
             return c_0
         else:
             return (c_0[0] + c_1[0]) / 2, (c_0[1] + c_1[1]) / 2
+        
+    def get_power_center(self) -> tuple:
+        P, params = self.get_power()
+        if params is None:
+            return None, None
+        elif params == 0.0:
+            return 0.0, (0.0, 0.0)
+        return P, self.get_center(params)
 
-    def get_wavelength(self, params: tuple) -> float:
-        pass
+    def get_wavelength(self) -> float:
+        """ Retourne la longueur d'onde en fonction des paramètres de la gaussienne 2D."""
+        params0, cov0, params1, cov1 = self.get_gaussian_params(plaque=0), self.get_gaussian_params(plaque=1)
+        thresh = 0.5
+        if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
+            print("Erreur: La covariance est trop élevée.")
+            return 0.0
+        
+        
+
+
 
 
 class PowerMeter(PowerMeter_nocam):
@@ -177,10 +215,6 @@ class PowerMeter(PowerMeter_nocam):
 
         try:
             self.dev = MLX90640()
-            try:
-                self.dev.set_debug(False)
-            except:
-                pass
             self.dev.i2c_init(evb9064x_get_i2c_comport_url('auto'))
             self.dev.set_refresh_rate(6)
             self.dev.dump_eeprom()
