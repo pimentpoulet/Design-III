@@ -6,6 +6,7 @@ from time import sleep
 from affichage import show_image_opencv
 import cv2
 import sys
+import matplotlib.pyplot as plt
 
 
 def main_cal():
@@ -195,10 +196,21 @@ def main_test():
     os.chdir("..")
     print("Test terminée")
 
+
+def affiche_graphique(x, y, titre, xlabel, ylabel):
+    plt.plot(x, y, linewidth=4)
+    # plt.title(titre, fontsize=16)
+    plt.xlabel(xlabel, fontsize=28)
+    plt.ylabel(ylabel, fontsize=28)
+    plt.tick_params(axis='both', which='major', labelsize=24)  # Increase font size of axis ticks
+    plt.grid()
+    plt.show()
+    return
+
 if __name__ == "__main__":
-    main_test()
-    #pows = np.load('test_data/test_2.5W-10W_step2.5W_temps_pow.npy')
-    #print(pows)
+    #main_test()
+    pows = np.load('test_data/test_973nm_0W-20W_step2.5W_temps_pow.npy')
+    print(np.nanmax(pows, axis=0))
     
     # reorder_calibration_data()
 
