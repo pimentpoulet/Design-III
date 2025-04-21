@@ -137,9 +137,11 @@ class PowerMeter_nocam:
         return params, cov
 
     def get_gaussian_params(self, odd_even: int, half = None) -> tuple:
-        """ Donne les paramètres de la gaussienne 2D pour un cadrillé qui dépend de
+        """
+        Donne les paramètres de la gaussienne 2D pour un cadrillé qui dépend de
         odd_even et pour la moitié du buffer choisie (half: 0 ou 1) ou l'ensemble du
-         buffer (half: None)."""
+         buffer (half: None)
+        """
         temp = self.filter_temp(self.get_moy_temp(half))
         # grid = self.checkers_grid(4, odd_even)*temp
         params, cov = self.fit_2Dgauss(temp)
@@ -150,7 +152,9 @@ class PowerMeter_nocam:
         return (c, amp, k, sigma), cov
     
     def get_power(self, plaque: int = 0) -> float:
-        """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
+        """
+        Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque
+        """
         params0, cov1, params1, cov2 = self.get_gaussian_params(plaque, 0), self.get_gaussian_params(plaque, 1)
         p_diff0, p_diff1 = params0[1], params1[1]
         refresh = 6
@@ -159,7 +163,9 @@ class PowerMeter_nocam:
         return P
         
     def get_center(self, params0: tuple, params1: tuple) -> tuple:
-        """ Retourne le centre de la gaussienne 2D pour deux cadrillés différents."""
+        """
+        Retourne le centre de la gaussienne 2D pour deux cadrillés différents
+        """
         c_0, c_1 = params0[0], params1[0]
         if c_0 == c_1:
             return c_0
@@ -175,7 +181,6 @@ class PowerMeter(PowerMeter_nocam):
         super().__init__(gain, tau, buffer_size)
         # Initialisation de la caméra
         self.camera_available = False
-
         try:
             self.dev = MLX90640()
             try:
@@ -194,9 +199,9 @@ class PowerMeter(PowerMeter_nocam):
 
     def get_temp(self) -> np.ndarray:
         self.dev.get_frame_data()
-        temp_amb = self.dev.get_ta() # Compensation de la température ambiante
+        temp_amb = self.dev.get_ta()    # Compensation de la température ambiante
         emissivity = 1.0
-        temp_array = self.dev.calculate_to(emissivity, temp_amb)  # Conversion en températures
+        temp_array = self.dev.calculate_to(emissivity, temp_amb)       # Conversion en températures
         return np.array(temp_array).reshape((self.rows, self.cols))
     
     def update_temperature(self, temp_array: np.ndarray = None):
@@ -210,10 +215,12 @@ class PowerMeter(PowerMeter_nocam):
         self.temp_arrays[0,:,:] = temp_array
 
     def get_power(self, plaque: int = 0) -> float:
-        """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
+        """
+        Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque
+        """
         params0, params1 = self.get_gaussian_params(plaque, 0), 
-        p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
+        p_diff0, p_diff1 = params0[1] - params0[2], params1[1] - params1[2]
         refresh = self.dev._get_refresh_rate()
-        dt = self.buffer_size /2 / (2**(refresh-1))
-        P = (self.tau*(p_diff1-p_diff0) / dt + p_diff1)*self.gain
+        dt = self.buffer_size / 2 / (2**(refresh - 1))
+        P = (self.tau * (p_diff1 - p_diff0) / dt + p_diff1) * self.gain
         return P
