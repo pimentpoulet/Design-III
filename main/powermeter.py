@@ -1,16 +1,17 @@
 from mlx90640_evb9064x import *
 from mlx90640 import *
-from calibration_class import *
 import numpy as np
 import cv2
-from scipy.optimize import curve_fit
 
 
 class PowerMeter:
-    def __init__(self, gain, tau, buffer_size=32):
-        # Initialisation de la caméra
-        self.camera_available = False
+    def __init__(self, buffer_size=32, emissivity=1.0):
 
+        # Initialisation de la caméra si indisponible
+        self.camera_available = False
+        self.emissivity = emissivity
+
+        # Initialisation de la caméra si disponible
         try:
             self.dev = MLX90640()
             try:
@@ -22,73 +23,73 @@ class PowerMeter:
             self.dev.dump_eeprom()
             self.dev.extract_parameters()
             self.camera_available = True
-
         except Exception as e:
             self.dev = None
-            print(f" Erreur: Initialisation de la caméra impossible --> {e}.")
+            # print(f" Erreur: Initialisation de la caméra impossible --> Le capteur n'est pas branché.")
 
         # Initialisation de la structure de données
         self.rows, self.cols = 24, 32
-        self.gain = gain
-        self.tau = tau
         self.buffer_size = buffer_size
         self.temp_arrays = np.zeros((self.buffer_size, self.rows, self.cols), dtype=np.float32)
-        try:
-            self.coeffs_array = np.load("coeffs_range20.0-150.0_jump5.0.npy")
-        except FileNotFoundError as e:
-            self.coeffs_array = np.zeros((5, self.rows, self.cols))
-            self.coeffs_array[-2,:,:] = 1.0
-            print(f"Erreur: Coefficients de calibration non trouvés --> {e}.")
+        self.coeffs_array = np.ones((5, self.rows, self.cols), dtype=np.float32)
 
     def get_temp(self) -> np.ndarray:
+        """
+        Retourne une matrice de températures si la caméra est disponible
+        """
+        if not self.camera_available:
+            print(" La caméra n'est pas disponible.")
+            return np.zeros((self.rows, self.cols), dtype=np.float32)
+
         self.dev.get_frame_data()
-        temp_amb = self.dev.get_ta() # Compensation de la température ambiante
-        emissivity = 1.0
-        temp_array = self.dev.calculate_to(emissivity, temp_amb)  # Conversion en températures
+        temp_amb = self.dev.get_ta()    # Compensation de la température ambiante
+        self.emissivity = 1.0
+        temp_array = self.dev.calculate_to(self.emissivity, temp_amb)    # Conversion en températures
         return np.array(temp_array).reshape((self.rows, self.cols))
 
-    def update_temperature(self, temp_array: np.ndarray = None):
-        # Catch error
-        if temp_array is None:
-            temp_array = self.get_temp()
+    def update_temperature(self, temp_array: np.ndarray):
+        """
+        Ajoute une nouvelle température dans le buffer et enlève la plus vieille
+        """
         if temp_array.shape != (self.rows, self.cols):
-            raise ValueError("The shape of the temperature array is not correct")
-        # Enlève la plus vieille valeur et ajoute la nouvelle
+            raise ValueError(" The shape of the temperature array is not correct")
         self.temp_arrays = np.roll(self.temp_arrays, 1, axis=0)
         self.temp_arrays[0,:,:] = temp_array
 
-    def get_moy_temp(self, half = None) -> np.ndarray:
-        if half is None:
-            # Retourne la moyenne des températures dans le buffer
-            return self.calibrate_temp(np.mean(self.temp_arrays, axis=0))
-        elif half == 0:
-            # Retourne la moyenne des températures dans la première moitié du buffer
-            return self.calibrate_temp(np.mean(self.temp_arrays[:self.buffer_size//2, :, :], axis=0))
-        elif half == 1:
-            # Retourne la moyenne des températures dans la seconde moitié du buffer
-            return self.calibrate_temp(np.mean(self.temp_arrays[self.buffer_size//2:, :, :], axis=0))
-        else:
-            raise ValueError("half must be 0 or 1")
+    def get_moy_temp(self) -> np.ndarray:
+        """
+        Retourne la moyenne des températures dans le buffer
+        """
+        return np.mean(self.temp_arrays, axis=0)
 
     def calibrate_temp(self, temp_array: np.ndarray) -> np.ndarray:
-        # Retourne la température corrigée
+        """
+        Retourne la température corrigée
+        """
         corrected_temp = np.zeros_like(temp_array)
         powers = np.array([temp_array**i for i in range(4, -1, -1)])
         corrected_temp = np.sum(powers * self.coeffs_array, axis=0)
         return corrected_temp
 
     def calc_centroid(self) -> tuple:
+        """
+        Calcule le centre de masse des températures
+        """
         temp = self.get_moy_temp()
         moy_temp = np.mean(temp)
         delta_temp = temp - moy_temp
         total_temp = np.sum(delta_temp)
-        
+
         x_coords, y_coords = np.meshgrid(np.arange(self.cols), np.arange(self.rows))
         x_centroid = np.sum(x_coords * delta_temp) / total_temp
         y_centroid = np.sum(y_coords * delta_temp) / total_temp
+
         return (x_centroid, y_centroid)
 
     def find_circle(self):
+        """
+        To be defined
+        """
         temp = self.get_moy_temp()
         circles = cv2.HoughCircles(temp, cv2.HOUGH_GRADIENT, 1, 20, param1=50, param2=30, minRadius=2, maxRadius=16)
         if circles is not None:
@@ -98,81 +99,67 @@ class PowerMeter:
             return self.calc_centroid()
 
     def temp_gradient(self):
+        """
+        Calcule le gradient de température
+        """
         temp = self.get_moy_temp()
         dx, dy = np.gradient(temp)
         return dx, dy
 
     def find_max_temp_index(self):
+        """
+        To be defined
+        """
         temp = self.get_moy_temp()
         return np.unravel_index(np.argmax(temp, axis=None), temp.shape)
 
-    def checkers_grid(self, sq_size: int, odd_even: int) -> np.ndarray:
+    def extrapolate_temp(self, temp) -> np.ndarray:
+        """
+        Extrapolation de la température
+        """
+        grad = self.temp_gradient()
+        pass
+
+    def checkers_grid(self, temp, sq_size, odd_even):
+        """
+        To be defined
+        """
         if odd_even not in (0, 1):
-            raise ValueError('odd_even must be 0 or 1')
-        grid = np.empty((self.rows, self.cols))
-        grid[:,:] = np.nan
-        ind = np.indices(grid.shape)
-        grid[(ind[0] // sq_size + ind[1] // sq_size) % 2 == odd_even] = 1
+            raise ValueError(' odd_even must be 0 or 1')
+        grid = np.zeroslike(temp)
+        ind = np.indices(temp.shape)
+        grid[(ind[0] // sq_size + ind[1] // sq_size) % 2 == odd_even] = temp
         return grid
 
-    def gaussian2D(xy, h_0, h_1, amp, k, sigma):
-        x_0, x_1 = xy
-        return (amp * np.exp(-((x_0 - h_0) ** 2 + (x_1 - h_1) ** 2) / (2 * (sigma ** 2)))+k).ravel()
-
-    def fit_2Dgauss(self, grid: np.ndarray):
-        a, b = self.find_max_temp_index()
-        x, y = np.indices(grid.shape)
-        params, cov = curve_fit(self.gaussian2D
-                            ,(x.ravel(), y.ravel())
-                            ,grid.ravel()
-                            ,p0=[a, b, 50, 24, 1]
-                            ,nan_policy='omit')
-        return params, cov
-
-    def get_gaussian_params(self, odd_even: int, half = None) -> tuple:
-        """ Donne les paramètres de la gaussienne 2D pour un cadrillé qui dépend de
-        odd_even et pour la moitié du buffer choisie (half: 0 ou 1) ou l'ensemble du
-         buffer (half: None)."""
-        temp = self.get_moy_temp(half)
-        grid = self.checkers_grid(temp, 2, odd_even)
-        params, cov = self.fit_2Dgauss(grid)
-        c = params[:2]
-        amp= params[2]
-        k = params[3]
-        sigma = params[4]
-        return (c, amp, k, sigma)
-    
-    def get_power(self, plaque: int = 0) -> float:
-        """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
-        params0, params1 = self.get_gaussian_params(plaque, 0), 
-        p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
-        refresh = self.dev._get_refresh_rate()
-        dt = self.buffer_size /2 / (2**(refresh-1))
-        P = (self.tau*(p_diff1-p_diff0) / dt + p_diff1)/self.gain
-        return P
-    
-    def get_power_wv(self, wv) -> float:
-        """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque
-        selon la longueur d'onde."""
+    def get_wavelength(self) -> float:
+        """
+        Calcule la longueur d'onde
+        """
+        temp = self.get_moy_temp()
+        grid1 = self.checkers_grid(temp, 2, 0)
+        grid2 = self.checkers_grid(temp, 2, 1)
         pass
 
-
-    def get_center(self, params0: tuple, params1: tuple) -> tuple:
-        """ Retourne le centre de la gaussienne 2D pour deux cadrillés différents."""
-        c_0, c_1 = params0[0], params1[0]
-        if c_0 == c_1:
-            return c_0
-        else:
-            return (c_0[0] + c_1[0]) / 2, (c_0[1] + c_0[1]) / 2
-
-    def get_wavelength(self, params0: tuple, params1: tuple) -> float:
-        """ Retourne la longueur d'onde en fonction des paramètres de la gaussienne 2D 
-        pour deux plaques."""
+    def get_power(self) -> float:
+        """
+        Calcule la puissance
+        """
+        temp = self.get_moy_temp()
+        diff = np.max(temp) - np.min(temp)
         pass
 
-    def get_center_and_wv(self) -> tuple:
-        """ Retourne le centre de la gaussienne 2D pour deux plaques différentes."""
-        params0, params1 = self.get_gaussian_params(0), self.get_gaussian_params(1)
-        return self.get_center(params0, params1), self.get_wavelength(params0, params1)
+    def cleanup(self):
+        """
+        Termine la communication I2C
+        """
+        if self.dev is not None:
+            try:
+                self.dev.i2c_tear_down()
+            except Exception as e:
+                print(f" Erreur lors de la fermeture de la connexion I2C : {e}")
 
-        
+    def get_test_moy_temp(self):
+        """
+        Retourne une valeur moyenne de températures aléatoires
+        """
+        return np.mean(25.0 + 20 * np.random.rand(self.rows, self.cols))
