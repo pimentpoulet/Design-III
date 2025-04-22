@@ -249,10 +249,10 @@ class PowerMeterApp:
         self.ax_2.set_xlabel("Position [mm]")
         self.ax_2.set_ylabel("Position [mm]")
 
-        circle = Circle((0, 0), 12.5, color='black', fill=False)
+        circle = Circle((0, 0), 25, color='black', fill=False)
         self.ax_2.add_patch(circle)
-        self.ax_2.set_xlim(-13.5, 13.5)
-        self.ax_2.set_ylim(-13.5, 13.5)
+        self.ax_2.set_xlim(-28, 28)
+        self.ax_2.set_ylim(-28, 28)
         self.ax_2.set_aspect("equal")
         self.ax_2.grid(True)
         
@@ -934,14 +934,18 @@ class PowerMeterApp:
         """
         draws the coordinate on the position graph
         """
+        self.click_clear_2()
+
+        print(f" position_tuple_x: {type(position_tuple[0])}")
+        print(f" position_tuple_y: {type(position_tuple[1])}")
+
         if position_tuple is None:
             return
+        if isinstance(position_tuple[0], np.floating):
+            position_tuple = float(position_tuple[0]), float(position_tuple[1])
 
-        # assert tuple is valid        
-        assert all(isinstance(axis, float) for axis in position_tuple)
-        assert all((-6 <= axis <= 6) for axis in position_tuple)
-
-        self.click_clear_2()
+        print(f" position_tuple_x: {type(position_tuple[0])}")
+        print(f" position_tuple_y: {type(position_tuple[1])}")
 
         x_pos, y_pos = position_tuple[0], position_tuple[1]
 
@@ -990,10 +994,10 @@ class PowerMeterApp:
         self.ax_2.set_ylabel("Position [mm]")
 
         # graph the sensor's area
-        circle = Circle((0, 0), 12.5, color='black', fill=False)
+        circle = Circle((0, 0), 25, color='black', fill=False)
         self.ax_2.add_patch(circle)
-        self.ax_2.set_xlim(-13.5, 13.5)
-        self.ax_2.set_ylim(-13.5, 13.5)
+        self.ax_2.set_xlim(-28, 28)
+        self.ax_2.set_ylim(-28, 28)
         self.ax_2.set_aspect("equal")
 
         # place grid in the background

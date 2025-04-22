@@ -1,0 +1,6 @@
+mm_px
+
+32-5-2 = 25 pixels
+distance = 20.4mm
+
+0.816 mm/px
