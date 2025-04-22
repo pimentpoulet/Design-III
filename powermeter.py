@@ -1,8 +1,8 @@
 import numpy as np
 import cv2
 
-# from mlx90640_evb9064x import *
-# from mlx90640 import *
+from mlx90640_evb9064x import *
+from mlx90640 import *
 from scipy.optimize import curve_fit
 from scipy.ndimage import gaussian_filter, median_filter, uniform_filter
 from scipy.signal import savgol_filter

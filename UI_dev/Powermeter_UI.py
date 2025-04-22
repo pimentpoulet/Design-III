@@ -49,7 +49,7 @@ class PowerMeterApp:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.configure(background = "red")
 
-        logo_path = r"UI\RVLABS_logo.png"
+        logo_path = r"UI_dev\RVLABS_logo.png"
         image = Image.open(logo_path)
         image = image.resize((300, 150), Image.LANCZOS)
         self.logo_img = ImageTk.PhotoImage(image)

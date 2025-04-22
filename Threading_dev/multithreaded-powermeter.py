@@ -86,7 +86,7 @@ class PowerMeterThread(threading.Thread):
                             
                             # Check that pos is not None and has the expected format
                             if pos is not None and len(pos) == 2:
-                                
+
                                 print(" in if for position")
 
                                 x, y = pos[0], pos[1]
@@ -100,16 +100,6 @@ class PowerMeterThread(threading.Thread):
                             self.result_queue.put(("position_data", None, "Invalid return format from get_power_center()"))
                     except Exception as e:
                         self.result_queue.put(("position_data", None, str(e)))
-
-                """
-                elif command == "get_position":
-                    try:
-                        P, pos = self.pm.get_power_center()
-                        x, y = pos[0], pos[1]
-                        self.result_queue.put(("position_data", (float(x), float(y))))
-                    except Exception as e:
-                        self.result_queue.put(("position_data", None, str(e)))
-                """
 
                 # Mark command as processed
                 self.command_queue.task_done()
