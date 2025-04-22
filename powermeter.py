@@ -303,12 +303,23 @@ class PowerMeter(PowerMeter_nocam):
         # Enlève la plus vieille valeur et ajoute la nouvelle
         self.temp_arrays = np.roll(self.temp_arrays, 1, axis=0)
         self.temp_arrays[0,:,:] = temp_array
-
-    def get_power(self, odd_even: int = 0) -> float:
+    
+    def get_power(self) -> float:
         """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
-        params0, params1 = self.get_gaussian_params(odd_even, 0), 
+        try:
+            (params0, cov0), (params1, cov1) = self.get_gaussian_params(half=0), self.get_gaussian_params(half=1)
+        except Exception as e:
+            print(f"Erreur: Impossible de récupérer les paramètres de la gaussienne --> {e}.")
+            return None, None
+        thresh = 0.5
+        if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
+            print("Erreur: La covariance est trop élevée.")
+            return 0.0, 0.0
         p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
+        p_diff0 = self.filter_time_series(p_diff0)
+        p_diff1 = self.filter_time_series(p_diff1)
         refresh = self.dev._get_refresh_rate()
         dt = self.buffer_size /2 / (2**(refresh-1))
-        P = (self.tau*(p_diff1-p_diff0) / dt + p_diff1)*self.gain
-        return P
+        diff = (p_diff1-p_diff0) / dt
+        P = (self.tau*diff + p_diff1)*self.gain+self.offset
+        return P, (params0, params1)
