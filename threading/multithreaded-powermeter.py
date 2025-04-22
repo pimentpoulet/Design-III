@@ -85,9 +85,15 @@ class PowerMeterThread(threading.Thread):
                             print(f"P: {P} | pos: {pos}")
                             
                             # Check that pos is not None and has the expected format
-                            if pos is not None and hasattr(pos, "__getitem__") and len(pos) >= 2:
+                            if pos is not None and len(pos) == 2:
+                                
+                                print(" in if for position")
+
                                 x, y = pos[0], pos[1]
-                                self.result_queue.put(("position_data", (float(x), float(y))))
+
+                                print(f" x: {x} | y: {y}")
+
+                                self.result_queue.put(("position_data", (x, y)))
                             else:
                                 self.result_queue.put(("position_data", None, "Invalid position format"))
                         else:
@@ -236,17 +242,24 @@ class ThreadedPowerMeterApp(PowerMeterApp):
                     else:
                         mean_temp = result[1]
                         self.update_power_graph(mean_temp)
-                
+
                 elif result_type == "position_data":
-                    if len(result) > 2:  # Error occurred
+
+                    print(f" in process_results()")
+
+                    print(f" result: {result}")
+                    if len(result) > 2:    # Error occurred
+                        print(" toto")
                         print(f" result: {result}")
                         print(f" Error getting position: {result[2]}")
                     else:
+                        print(" tata")
                         position = result[1]
-                        if position:
-                            self.position_tuple = position
-                            self.display_position(position)
-                            self.pos_measurement_label.config(text=f"[{position[0]:.2f}:{position[1]:.2f}]")
+                        print(f" position: {position}")
+
+                        self.position_tuple = position
+                        self.display_position(position)
+                        self.pos_measurement_label.config(text=f"[{position[0]:.2f}:{position[1]:.2f}]")
                 
                 elif result_type == "error":
                     print(f" Error in worker thread: {result[1]}")
