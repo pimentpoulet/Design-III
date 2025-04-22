@@ -238,13 +238,15 @@ def afficher_power():
         pm.update_temperature(pm.get_temp(temps, i))
         if i % 32 == 0 and i != 0:
             try:
-                power, center = pm.get_power()
+                # power, center = pm.get_power()
                 # power, center = pm.get_power_sigmas()
+                # power, center = pm.get_power_center()
+                power, center = pm.get_power_zones()
                 power_series.append(power)
                 print(center)
             except Exception as e:
                 print(f"Erreur: {e}")
-                # print(pm.get_moy_temp())
+                # # print(pm.get_moy_temp())
                 continue
     affiche_graphique(np.arange(len(power_series)),
                        power_series,
@@ -288,5 +290,5 @@ if __name__ == "__main__":
     # afficher_integration()
     # afficher_3D_temp()
     # afficher_puissance_serie_t()
-    # afficher_power()
-    afficher_wv()
+    afficher_power()
+    # afficher_wv()

@@ -1,8 +1,8 @@
 import numpy as np
 import cv2
 
-from mlx90640_evb9064x import *
-from mlx90640 import *
+# from mlx90640_evb9064x import *
+# from mlx90640 import *
 from scipy.optimize import curve_fit
 from scipy.ndimage import gaussian_filter, median_filter, uniform_filter
 from scipy.signal import savgol_filter
@@ -174,6 +174,26 @@ class PowerMeter_nocam:
         sigma = params[4:]
         return (c, amp, k, sigma), cov
     
+    def anneau(self, centre, rayon, largeur):
+        nx, ny = self.cols, self.rows
+        x0, y0 = centre
+        X, Y = np.ogrid[:nx, :ny]
+
+        distance = np.sqrt((X - x0)**2 + (Y - y0)**2)
+        print("ah")
+        mask = (distance >= rayon - largeur / 2) & (distance <= rayon + largeur / 2)
+        print("oh")
+        return mask
+    
+    def get_diff_temp(self, half: int = 0) -> float:
+        """ Retourne la différence de température entre les deux plaques."""
+        temp = self.get_moy_temp(half)
+        a, b = self.find_max_temp_index()
+        temp_max = np.mean(temp[a-1:a+2, b-1:b+2])
+        mask = self.anneau((a, b), 5, 2)
+        temp_min = np.mean(temp[mask])
+        return temp_max - temp_min
+    
     def get_power(self) -> float:
         """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
         try:
@@ -213,27 +233,18 @@ class PowerMeter_nocam:
         P = (self.tau*(p_aire1-p_aire0) / dt + p_aire1+self.offset)*self.gain
         return self.filter_time_series(P), (params0, params1)
     
-    def get_puissance_zones(self) -> float:
+    def get_power_zones(self) -> float:
         """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
-        try:
-            (params0, cov0), (params1, cov1) = self.get_gaussian_params(half=0), self.get_gaussian_params(half=1)
-        except Exception as e:
-            print(f"Erreur: Impossible de récupérer les paramètres de la gaussienne --> {e}.")
-            return None, None
-        thresh = 0.5
-        if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
-            print("Erreur: La covariance est trop élevée.")
-            return 0.0, 0.0
-        p_aire0, p_aire1 = params0[1]*params0[3][0]*params0[3][1], params1[1]*params1[3][0]*params1[3][1]
+        diff_0, diff_1 = self.get_diff_temp(0), self.get_diff_temp(1)
         refresh = 6
         dt = self.buffer_size /2 / (2**(refresh-1))
-        P = (self.tau*(p_aire1-p_aire0) / dt + p_aire1+self.offset)*self.gain
-        return self.filter_time_series(P), (params0, params1)
+        P = (self.tau*(diff_1-diff_0) / dt + diff_1+self.offset)*self.gain
+        return self.filter_time_series(P), self.find_max_temp_index()
         
     def get_center(self, params0: tuple, params1: tuple) -> tuple:
         """ Retourne le centre de la gaussienne 2D pour deux cadrillés différents."""
         c_0, c_1 = params0[0], params1[0]
-        if c_0 == c_1:
+        if c_0[0] == c_1[0] and c_0[1] == c_1[1]:
             return c_0
         else:
             return (c_0[0] + c_1[0]) / 2, (c_0[1] + c_1[1]) / 2
