@@ -247,7 +247,7 @@ class PowerMeter_nocam:
         if c_0[0] == c_1[0] and c_0[1] == c_1[1]:
             return c_0
         else:
-            return (c_0[0] + c_1[0]) / 2, (c_0[1] + c_1[1]) / 2
+            return ((c_0[0] + c_1[0]) / 2)-11.5, ((c_0[1] + c_1[1]) / 2)-15.5
         
     def get_power_center(self) -> tuple:
         P, params = self.get_power()
