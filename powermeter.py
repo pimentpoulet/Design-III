@@ -9,7 +9,7 @@ from scipy.signal import savgol_filter
 
 
 class PowerMeter_nocam:
-    def __init__(self, gain: float=0.5, tau: float=0.1, offset: float= 26, buffer_size: int=32, time_series: int=30, ref_temp: int=100):
+    def __init__(self, gain: float=0.2, tau: float=0.3, offset: float= 6, buffer_size: int=32, time_series: int=30):
         # Initialisation de la structure de données
         self.rows, self.cols = 24, 32
         self.gain = gain
@@ -19,7 +19,6 @@ class PowerMeter_nocam:
         self.temp_arrays = np.zeros((self.buffer_size, self.rows, self.cols), dtype=np.float32)
         self.time_series = time_series
         self.time_series_array = np.zeros((self.time_series), dtype=np.float32)
-        self.ref_temp = ref_temp
         try:
             self.coeffs_array = np.load("coeffs_range20.0-150.0_jump5.0.npy")
         except FileNotFoundError as e:
@@ -46,28 +45,26 @@ class PowerMeter_nocam:
         self.time_series_array = np.roll(self.time_series_array, 1)
         self.time_series_array[0] = time_series
 
-    def filter_time_series(self, time_series: None) -> np.ndarray:
+    def filter_time_series(self, time_series: None) -> float:
         print(time_series)
         if time_series is not None:
             self.update_time_series(time_series)
-        filt = savgol_filter(self.time_series_array, 15, 4, mode='nearest')[-1]
-        print(filt)
-        return filt
+        return savgol_filter(self.time_series_array, 15, 4, mode='nearest')[-1]
         # return savgol_filter(self.time_series_array, 15, 4, mode='nearest')[-1]
 
     def get_moy_temp(self, half = None) -> np.ndarray:
         if half is None:
             # Retourne la moyenne des températures dans le buffer
-            return self.calibrate_temp(np.mean(self.temp_arrays, axis=0))
-            # return np.mean(self.temp_arrays, axis=0)
+            # return self.calibrate_temp(np.mean(self.temp_arrays, axis=0))
+            return np.mean(self.temp_arrays, axis=0)
         elif half == 0:
             # Retourne la moyenne des températures dans la première moitié du buffer
-            return self.calibrate_temp(np.mean(self.temp_arrays[:self.buffer_size//2, :, :], axis=0))
-            # return np.mean(self.temp_arrays[:self.buffer_size//2, :, :], axis=0)
+            # return self.calibrate_temp(np.mean(self.temp_arrays[:self.buffer_size//2, :, :], axis=0))
+            return np.mean(self.temp_arrays[:self.buffer_size//2, :, :], axis=0)
         elif half == 1:
             # Retourne la moyenne des températures dans la seconde moitié du buffer
-            return self.calibrate_temp(np.mean(self.temp_arrays[self.buffer_size//2:, :, :], axis=0))
-            # return np.mean(self.temp_arrays[self.buffer_size//2:, :, :], axis=0)
+            # return self.calibrate_temp(np.mean(self.temp_arrays[self.buffer_size//2:, :, :], axis=0))
+            return np.mean(self.temp_arrays[self.buffer_size//2:, :, :], axis=0)
         else:
             raise ValueError("half must be 0 or 1")
 
@@ -135,13 +132,27 @@ class PowerMeter_nocam:
         x_0, x_1 = xy
         return (amp * np.exp(-((x_0 - h_0) ** 2 + (x_1 - h_1) ** 2) / (2 * (sigma ** 2)))+k).ravel()
 
+    def gaussian2D_sigmas(self, xy, h_0, h_1, amp, k, sigma_x, sigma_y):
+        x_0, x_1 = xy
+        return (amp * np.exp(-((x_0 - h_0) ** 2 / (2 * (sigma_x ** 2)) + (x_1 - h_1) ** 2 / (2 * (sigma_y ** 2))))+k).ravel()
+
     def fit_2Dgauss(self, grid: np.ndarray):
         a, b = self.find_max_temp_index()
         x, y = np.indices(grid.shape)
         params, cov = curve_fit(self.gaussian2D
                             ,(x.ravel(), y.ravel())
                             ,grid.ravel()
-                            ,p0=[a, b, 50, 24, 1]
+                            ,p0=[a, b, 50, -30, 1]
+                            ,nan_policy='omit')
+        return params, cov
+    
+    def fit_2Dgauss_sigmas(self, grid: np.ndarray):
+        a, b = self.find_max_temp_index()
+        x, y = np.indices(grid.shape)
+        params, cov = curve_fit(self.gaussian2D_sigmas
+                            ,(x.ravel(), y.ravel())
+                            ,grid.ravel()
+                            ,p0=[a, b, 50, -30, 1, 1]
                             ,nan_policy='omit')
         return params, cov
 
@@ -150,34 +161,74 @@ class PowerMeter_nocam:
         odd_even (None toute la plaque, 0 plaque dessus et 1 plaque dessous) et pour la moitié du buffer 
         choisie (half: 0 ou 1) ou l'ensemble du buffer (half: None)."""
         temp = self.get_moy_temp(half)
-        # temp = self.calibrate_temp(self.filter_temp(self.get_moy_temp(half)))
+        # temp = self.filter_temp(self.get_moy_temp(half))
         if odd_even is None:
             grid = temp
         else:
             grid = self.checkers_grid(3, odd_even)*temp
         params, cov = self.fit_2Dgauss(grid)
+        # params, cov = self.fit_2Dgauss_sigmas(grid)
         c = params[:2]
         amp= params[2]
         k = params[3]
-        sigma = params[4]
+        sigma = params[4:]
         return (c, amp, k, sigma), cov
     
     def get_power(self) -> float:
         """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
         try:
-            params0, cov1, params1, cov2 = self.get_gaussian_params(half=0), self.get_gaussian_params(half=1)
+            (params0, cov0), (params1, cov1) = self.get_gaussian_params(half=0), self.get_gaussian_params(half=1)
         except Exception as e:
             print(f"Erreur: Impossible de récupérer les paramètres de la gaussienne --> {e}.")
             return None, None
         thresh = 0.5
-        if np.mean(cov1) > thresh or np.mean(cov2) > thresh:
+        if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
             print("Erreur: La covariance est trop élevée.")
             return 0.0, 0.0
-        p_diff0, p_diff1 = params0[1], params1[1]
+        p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
+        p_diff0 = self.filter_time_series(p_diff0)
+        p_diff1 = self.filter_time_series(p_diff1)
         refresh = 6
         dt = self.buffer_size /2 / (2**(refresh-1))
-        P = (self.tau*(p_diff1-p_diff0) / dt + p_diff1)*self.gain
+        diff = (p_diff1-p_diff0) / dt
+        # if not -2 < diff < 2:
+        #     return 0.0, 0.0
+        P = (self.tau*diff + p_diff1)*self.gain+self.offset
         return P, (params0, params1)
+    
+    def get_power_sigmas(self) -> float:
+        """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
+        try:
+            (params0, cov0), (params1, cov1) = self.get_gaussian_params(half=0), self.get_gaussian_params(half=1)
+        except Exception as e:
+            print(f"Erreur: Impossible de récupérer les paramètres de la gaussienne --> {e}.")
+            return None, None
+        thresh = 0.5
+        if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
+            print("Erreur: La covariance est trop élevée.")
+            return 0.0, 0.0
+        p_aire0, p_aire1 = params0[1]*params0[3][0]*params0[3][1], params1[1]*params1[3][0]*params1[3][1]
+        refresh = 6
+        dt = self.buffer_size /2 / (2**(refresh-1))
+        P = (self.tau*(p_aire1-p_aire0) / dt + p_aire1+self.offset)*self.gain
+        return self.filter_time_series(P), (params0, params1)
+    
+    def get_puissance_zones(self) -> float:
+        """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
+        try:
+            (params0, cov0), (params1, cov1) = self.get_gaussian_params(half=0), self.get_gaussian_params(half=1)
+        except Exception as e:
+            print(f"Erreur: Impossible de récupérer les paramètres de la gaussienne --> {e}.")
+            return None, None
+        thresh = 0.5
+        if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
+            print("Erreur: La covariance est trop élevée.")
+            return 0.0, 0.0
+        p_aire0, p_aire1 = params0[1]*params0[3][0]*params0[3][1], params1[1]*params1[3][0]*params1[3][1]
+        refresh = 6
+        dt = self.buffer_size /2 / (2**(refresh-1))
+        P = (self.tau*(p_aire1-p_aire0) / dt + p_aire1+self.offset)*self.gain
+        return self.filter_time_series(P), (params0, params1)
         
     def get_center(self, params0: tuple, params1: tuple) -> tuple:
         """ Retourne le centre de la gaussienne 2D pour deux cadrillés différents."""
@@ -193,21 +244,20 @@ class PowerMeter_nocam:
             return None, None
         elif params == 0.0:
             return 0.0, (0.0, 0.0)
-        return P, self.get_center(params)
+        return P, self.get_center(params[0], params[1])
 
     def get_wavelength(self) -> float:
         """ Retourne la longueur d'onde en fonction des paramètres de la gaussienne 2D."""
-        params0, cov0, params1, cov1 = self.get_gaussian_params(plaque=0), self.get_gaussian_params(plaque=1)
+        (params0, cov0), (params1, cov1) = self.get_gaussian_params(odd_even=0), self.get_gaussian_params(odd_even=1)
         thresh = 0.5
         if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
             print("Erreur: La covariance est trop élevée.")
             return 0.0
+        p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
+        ratio = p_diff0/p_diff1
+        return ratio
         
         
-
-
-
-
 class PowerMeter(PowerMeter_nocam):
     def __init__(self, gain: float, tau: float, buffer_size: int = 32):
         super().__init__(gain, tau, buffer_size)
@@ -243,9 +293,9 @@ class PowerMeter(PowerMeter_nocam):
         self.temp_arrays = np.roll(self.temp_arrays, 1, axis=0)
         self.temp_arrays[0,:,:] = temp_array
 
-    def get_power(self, plaque: int = 0) -> float:
+    def get_power(self, odd_even: int = 0) -> float:
         """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
-        params0, params1 = self.get_gaussian_params(plaque, 0), 
+        params0, params1 = self.get_gaussian_params(odd_even, 0), 
         p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
         refresh = self.dev._get_refresh_rate()
         dt = self.buffer_size /2 / (2**(refresh-1))

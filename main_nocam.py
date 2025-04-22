@@ -61,12 +61,15 @@ def afficher_delta_Gauss():
         pm.update_temperature(pm.get_temp(temps, i))
         if i % 32 == 0 and i != 0:
             try:
-                params, cov = pm.get_gaussian_params(0)
-                if 0 < np.mean(cov) < 1:
-                    temp_diff.append(pm.filter_time_series(params[1]-params[2]))
+                params, cov = pm.get_gaussian_params()
+                if 0 < np.mean(cov) < 0.5:
+                    temp_diff.append(pm.filter_time_series(params[1]-params[2]+26))
+                    # temp_diff.append(params[1]-params[2])
                     # print(params[1])
+                else:
+                    temp_diff.append(0.0)
             except Exception as e:
-                # print(f"Erreur: {e}.")
+                print(f"Erreur: {e}")
                 # print(pm.get_moy_temp())
                 continue
     affiche_graphique(np.arange(len(temp_diff)),
@@ -164,13 +167,14 @@ def afficher_integration():
 
 
 def afficher_3D_temp():
-    temps = np.load("test_data/test_973nm_0W-20W_step2.5W_temps_pow.npy")
+    temps = np.load("test_data/test_973nm_aligne_0W-5W_step5W_temps_pow.npy")
     pm = PowerMeter_nocam(0.05, 10, buffer_size=64)
     for i in range(temps.shape[0]):
         pm.update_temperature(pm.get_temp(temps, i))
         if i % 64 == 0 and i != 0:
             try:
-                frame = pm.filter_temp(pm.get_moy_temp())
+                frame = pm.get_moy_temp()
+                # frame = pm.calibrate_temp(pm.get_moy_temp())
                 x = np.arange(frame.shape[1])
                 y = np.arange(frame.shape[0])
                 X, Y = np.meshgrid(x, y)
@@ -192,6 +196,7 @@ def afficher_puissance_serie_t():
     temps = np.load("test_data/test_973nm_0W-20W_step2.5W_temps_pow.npy")
     pm = PowerMeter_nocam(0.05, 10, buffer_size=32)
     diff_series = []
+    min_series = []
     for i in range(temps.shape[0]):
         pm.update_temperature(pm.get_temp(temps, i))
         if i % 32 == 0 and i != 0:
@@ -206,7 +211,8 @@ def afficher_puissance_serie_t():
                 # temp_max = np.amax(temp_lisse)
                 deltaE = temp_max - temp_min
                 print(temp_min)
-                diff_series.append(deltaE)
+                diff_series.append(temp_max)
+                min_series.append(temp_min)
                     # print(deltaE)
             except Exception as e:
                 print(f"Erreur: {e}")
@@ -217,6 +223,57 @@ def afficher_puissance_serie_t():
                        "Temps (s)",
                        "Différence de température (°C)"
                      )
+    affiche_graphique(np.arange(len(min_series)),
+                       min_series,
+                       "Temps (s)",
+                       "Différence de température (°C)"
+                     )
+    
+
+def afficher_power():
+    temps = np.load("test_data/test_973nm_0W-20W_step2.5W_temps_pow.npy")
+    pm = PowerMeter_nocam(gain=0.2, tau=0.3, offset=6)
+    power_series = []
+    for i in range(temps.shape[0]):
+        pm.update_temperature(pm.get_temp(temps, i))
+        if i % 32 == 0 and i != 0:
+            try:
+                power, center = pm.get_power()
+                # power, center = pm.get_power_sigmas()
+                power_series.append(power)
+                print(center)
+            except Exception as e:
+                print(f"Erreur: {e}")
+                # print(pm.get_moy_temp())
+                continue
+    affiche_graphique(np.arange(len(power_series)),
+                       power_series,
+                       "Temps (s)",
+                       "Puissance (W)"
+                     )
+    
+
+def afficher_wv():
+    temps = np.load("test_data/test_450nm_aligne_0W-5W_step5W_temps_pow.npy")
+    pm = PowerMeter_nocam(gain=0.2, tau=0.3, offset=6)
+    wv_series = []
+    for i in range(temps.shape[0]):
+        pm.update_temperature(pm.get_temp(temps, i))
+        if i % 32 == 0 and i != 0:
+            try:
+                wv = pm.get_wavelength()
+                # power, center = pm.get_power_sigmas()
+                wv_series.append(wv)
+                # print(center)
+            except Exception as e:
+                print(f"Erreur: {e}")
+                # print(pm.get_moy_temp())
+                continue
+    affiche_graphique(np.arange(len(wv_series)),
+                       wv_series,
+                       "Temps (s)",
+                       "Puissance (W)"
+                     )
 
 
 
@@ -225,9 +282,11 @@ if __name__ == "__main__":
     # main_nocam()
 
     # afficher_delta_T()
-    afficher_delta_Gauss()
+    # afficher_delta_Gauss()
     # afficher_delta_Gauss_sigma()
     # afficher_profil_temp()
     # afficher_integration()
     # afficher_3D_temp()
     # afficher_puissance_serie_t()
+    # afficher_power()
+    afficher_wv()
