@@ -1003,7 +1003,7 @@ class PowerMeterApp:
         self.canvas_2.draw()
 
         # log to terminal
-        print(" Graphique de position précédent effacé.")
+        # print(" Graphique de position précédent effacé.")
 
     def on_closing(self):
         print(" Closing the application...")        

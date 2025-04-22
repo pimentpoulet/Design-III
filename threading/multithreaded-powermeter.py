@@ -24,6 +24,7 @@ class PowerMeterThread(threading.Thread):
         # Initialize PowerMeter instance
         try:
             self.pm = PowerMeter_test()
+            print(self.pm)
             self.result_queue.put(("init_status", True))
         except Exception as e:
             self.result_queue.put(("init_status", False, str(e)))
@@ -73,11 +74,36 @@ class PowerMeterThread(threading.Thread):
 
                 elif command == "get_position":
                     try:
-                        _, pos = self.pm.get_power_center()
+                        print(" ligne 77")
+                        result = self.pm.get_power_center()
+                        print(f" result of self.pm.get_power_center(): {result}")
+                        
+                        # Check that we got a tuple with at least 2 elements
+                        if isinstance(result, tuple) and len(result) >= 2:
+                            P, pos = result
+
+                            print(f"P: {P} | pos: {pos}")
+                            
+                            # Check that pos is not None and has the expected format
+                            if pos is not None and hasattr(pos, "__getitem__") and len(pos) >= 2:
+                                x, y = pos[0], pos[1]
+                                self.result_queue.put(("position_data", (float(x), float(y))))
+                            else:
+                                self.result_queue.put(("position_data", None, "Invalid position format"))
+                        else:
+                            self.result_queue.put(("position_data", None, "Invalid return format from get_power_center()"))
+                    except Exception as e:
+                        self.result_queue.put(("position_data", None, str(e)))
+
+                """
+                elif command == "get_position":
+                    try:
+                        P, pos = self.pm.get_power_center()
                         x, y = pos[0], pos[1]
                         self.result_queue.put(("position_data", (float(x), float(y))))
                     except Exception as e:
                         self.result_queue.put(("position_data", None, str(e)))
+                """
 
                 # Mark command as processed
                 self.command_queue.task_done()
@@ -213,6 +239,7 @@ class ThreadedPowerMeterApp(PowerMeterApp):
                 
                 elif result_type == "position_data":
                     if len(result) > 2:  # Error occurred
+                        print(f" result: {result}")
                         print(f" Error getting position: {result[2]}")
                     else:
                         position = result[1]
