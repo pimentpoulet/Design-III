@@ -11,37 +11,23 @@ import serial
 import serial.tools.list_ports
 import webbrowser
 
-from ToggleButton import ToggleButton
+from ToggleButton_main import ToggleButton
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import ttk, filedialog
 from PIL import Image, ImageTk
-from time import sleep
-from powermeter_test import PowerMeter_test
-
-
-def checkers_grid(shape, sq_size, odd_even=1):
-    if odd_even not in (0, 1):
-        raise ValueError('odd_even must be 0 or 1')
-    grid = np.zeros(shape, dtype=int)
-    ind = np.indices(grid.shape)
-    grid[((ind[0] - 2) // sq_size + (ind[1] - 1) // sq_size) % 2 == odd_even] = 1
-    return grid
-
-
-def print_grid_info(root):
-    for child in root.winfo_children():
-        info = child.grid_info()
-        if info:
-            print(f" Widget: {child}, Row: {info['row']}, Column: {info['column']}")
+from powermeter_main import PowerMeter
+from matplotlib.patches import Circle
 
 
 class TextRedirector:
     def __init__(self, text_widget):
-        self.text_widget = text_widget
+        self.terminal = text_widget
 
     def write(self, message):
-        self.text_widget.insert(tk.END, message)
-        self.text_widget.see(tk.END)
+        self.terminal.configure(state='normal')
+        self.terminal.insert(tk.END, message)
+        self.terminal.see(tk.END)
+        self.terminal.configure(state='disabled')
 
     def flush(self):
         pass
@@ -55,7 +41,7 @@ class PowerMeterApp:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.configure(background = "red")
 
-        logo_path = r"UI\RVLABS_logo.png"
+        logo_path = r"Threading_dev\RVLABS_logo.png"
         image = Image.open(logo_path)
         image = image.resize((300, 150), Image.LANCZOS)
         self.logo_img = ImageTk.PhotoImage(image)
@@ -67,14 +53,15 @@ class PowerMeterApp:
         self.power_values_1 = None
         self.wavelengths_2 = None
         self.power_values_2 = None
+        self.position_tuple = (0, 0)
         self.last_selected_wavelength = ""
         self.current_values = [450, 976, 1976]
 
         # time parameters
         self.total_saving_duration = None    #  si c'est None, la durée d'enregistrement est illimitée
         self.current_save_duration = 0
-        self.power_time_inc = 1000           # ms
-        self.cam_time_inc = 32               # ms
+        self.power_time_inc = 1000           # ms --> updates power and position graphs at 1Hz
+        self.pm_update_time_inc = 32         # ms
 
         # save parameters
         self.recording_path = None
@@ -82,13 +69,6 @@ class PowerMeterApp:
         # fonts
         font = tkFont.Font(family='Trebuchet MS', size=12)
         font_pw = tkFont.Font(family='Trebuchet MS', size=18)
-
-        # pre_saving matrix initialization  -->  ça c'est trash pour l'instant
-        try:
-            pre_saving_matrix = np.zeros((24, 32, self.time_duration * 32), dtype=np.float32)
-        except:
-            self.pre_saving_matrix = None
-            pass
 
         """ global frames """
 
@@ -229,7 +209,7 @@ class PowerMeterApp:
         # power measurement display
         self.power_label = tk.Label(self.meas_frame, text="Puissance mesurée [W]:", font=font_pw)
         self.power_label.grid(row=0, column=1, padx=15, pady=10, sticky="e")
-        self.pw_measurement_label = tk.Label(self.meas_frame, text="---", font=font_pw)
+        self.pw_measurement_label = tk.Label(self.meas_frame, text="----", font=font_pw)
         self.pw_measurement_label.grid(row=0, column=2, padx=0, pady=10, sticky="w")
 
         # wavelength measurement display
@@ -237,6 +217,11 @@ class PowerMeterApp:
         self.wv_label.grid(row=1, column=1, padx=15, pady=10, sticky="e")
         self.wv_measurement_label = tk.Label(self.meas_frame, text="----", font=font_pw)
         self.wv_measurement_label.grid(row=1, column=2, padx=0, pady=10, sticky="w")
+
+        self.pos_label = tk.Label(self.meas_frame, text="Position du faisceau:", font=font_pw)
+        self.pos_label.grid(row=0, column=3, padx=15, pady=10, sticky="e")
+        self.pos_measurement_label = tk.Label(self.meas_frame, text="----", font=font_pw)
+        self.pos_measurement_label.grid(row=1, column=3, padx=0, pady=10)
 
         """ graph_frame """
 
@@ -251,9 +236,18 @@ class PowerMeterApp:
         # position graph
         self.fig_2, self.ax_2 = plt.subplots(figsize=(5, 5))
         self.canvas_2 = FigureCanvasTkAgg(self.fig_2, master=self.graph_frame)
-        self.ax_2.set_title("Image thermique")
-        self.ax_2.axis("off")
 
+        self.ax_2.set_title("Position du faisceau")
+        self.ax_2.set_xlabel("Position [mm]")
+        self.ax_2.set_ylabel("Position [mm]")
+
+        circle = Circle((0, 0), 25, color='black', fill=False)
+        self.ax_2.add_patch(circle)
+        self.ax_2.set_xlim(-28, 28)
+        self.ax_2.set_ylim(-28, 28)
+        self.ax_2.set_aspect("equal")
+        self.ax_2.grid(True)
+        
         # place graphs
         self.canvas_1.get_tk_widget().grid(row=0, column=0, columnspan=4, padx=15, pady=10, sticky="nsew")
         self.canvas_2.get_tk_widget().grid(row=0, column=4, columnspan=2, padx=15, pady=10, sticky="nsew")
@@ -285,7 +279,9 @@ class PowerMeterApp:
         # terminal
         self.log_text = tk.Text(self.term_frame, height=8, width=120, wrap="word", font=font)
         self.log_text.grid(column=0, row=0, sticky="nsew")
-        self.log_text.insert(tk.END, " Journaux d'application initialisés...\n\n")    # \n Le puissance-mètre est en mode < Utilisation libre >\n")
+        self.log_text.insert(tk.END, " Journaux d'application initialisés...\n")
+        self.log_text.bind("<Key>", lambda e: "break")
+        self.log_text.bind("<Button-1>", lambda e: "break")
 
         # terminal scrollbar
         scrollbar = ttk.Scrollbar(self.term_frame, orient="vertical", command=self.log_text.yview)
@@ -319,6 +315,18 @@ class PowerMeterApp:
 
         self.plot_y_2 = getattr(self, 'plot_y', [])
         self.plot_x_2 = getattr(self, 'plot_x', [])
+
+    def update_pm_data(self):
+        """
+        update data from the powermeter
+        """
+        try:
+            self.pm.update_temperature()
+        except Exception as e:
+            print(f" An error occurred: {e}")
+        
+        if self.cam_is_refreshing:
+            self.root.after(500, self.update_pm_data())
 
     def toggle_recording(self, state):
         """
@@ -362,6 +370,30 @@ class PowerMeterApp:
             if hasattr(self, 'recording_path'):
                 delattr(self, 'recording_path')
 
+    def disable_buttons(self):
+        """
+        disable all buttons in the UI
+        """
+        self.clear_button_1.config(state="disabled")
+        self.clear_button_2.config(state="disabled")
+        self.save_button_1.config(state="disabled")
+        self.save_button_2.config(state="disabled")
+        self.wavelength_menu.config(state="disabled")
+        self.toggle_button.disable()
+        self.test_duration_entry.config(state="disabled")
+
+    def enable_buttons(self):
+        """
+        enable all buttons in the UI
+        """
+        self.clear_button_1.config(state="normal")
+        self.clear_button_2.config(state="normal")
+        self.save_button_1.config(state="normal")
+        self.save_button_2.config(state="normal")
+        self.wavelength_menu.config(state="normal")
+        self.toggle_button.enable()
+        self.test_duration_entry.config(state="normal")
+
     def click_start(self):
         """
         setups the start button, updates the flags and starts data acquisition / test data generation
@@ -386,17 +418,13 @@ class PowerMeterApp:
                     self.start_button.config(text="     Arrêter      ")
 
                 # disable buttons
-                self.clear_button_1.config(state="disabled")
-                self.clear_button_2.config(state="disabled")
-                self.save_button_1.config(state="disabled")
-                self.save_button_2.config(state="disabled")
-                self.wavelength_menu.config(state="disabled")
-                self.toggle_button.disable()
-                self.test_duration_entry.config(state="disabled")
+                self.disable_buttons()
 
-                print(f" Le capteur est connecté sur le port COM3.")
                 print(" Processus démarré !")
                 self.cam_is_refreshing = True
+
+                # update pm data
+                self.update_pm_data()
 
                 # call update functions in real use mode
                 self.update_loop(test=False)
@@ -410,13 +438,7 @@ class PowerMeterApp:
                 self.cam_is_refreshing = False
 
                 # enable buttons
-                self.clear_button_1.config(state="normal")
-                self.clear_button_2.config(state="normal")
-                self.save_button_1.config(state="normal")
-                self.save_button_2.config(state="normal")
-                self.wavelength_menu.config(state="normal")
-                self.toggle_button.enable()
-                self.test_duration_entry.config(state="normal")
+                self.enable_buttons()
 
                 # disable the recording flag if recording
                 if self.recording_enabled:
@@ -431,68 +453,20 @@ class PowerMeterApp:
 
         # camera is disconnected
         else:
+            return
 
-            # process is started
-            if not self.cam_is_refreshing:
 
-                # set the stop button according to sensor use mode
-                if self.recording_enabled:
-                    if self.total_saving_duration is not None:
-                        self.start_button.config(text="     Arrêter l'enregistrement      ")
-                    else:
-                        print(" Veuillez spécifier une durée d'enregistrement.")
-                        return
-                else:
-                    self.start_button.config(text="     Arrêter      ")
 
-                # disable buttons
-                self.clear_button_1.config(state="disabled")
-                self.clear_button_2.config(state="disabled")
-                self.save_button_1.config(state="disabled")
-                self.save_button_2.config(state="disabled")
-                self.wavelength_menu.config(state="disabled")
-                self.toggle_button.disable()
-                self.test_duration_entry.config(state="disabled")
 
-                self.cam_is_refreshing = True
-                print(" Test démarré !")
 
-                # call update functions in test mode
-                self.update_loop(test=True)
-                self.update_cam()
 
-            # process is stopped
-            else:
-                print(" Test arrêté !")
-                self.wavelengths_1 = self.plot_x_1
-                self.power_values_1 = self.plot_y_1
-                self.cam_is_refreshing = False
 
-                # enable buttons
-                self.clear_button_1.config(state="normal")
-                self.clear_button_2.config(state="normal")
-                self.save_button_1.config(state="normal")
-                self.save_button_2.config(state="normal")
-                self.wavelength_menu.config(state="normal")
-                self.toggle_button.enable()
-                self.test_duration_entry.config(state="normal")
 
-                # disable the recording flag if recording
-                if self.recording_enabled:
-                    self.recording_enabled = False
-                    self.total_saving_duration = None
-                    self.total_saving_duration_entered = False
-                    self.toggle_button.toggle()
-
-                    # reset the current saving counter
-                    self.current_save_duration = 0
-                self.start_button.config(text="    Démarrer    ")
 
     def check_connection(self):
         """
         checks the camera's connection status
         """
-        print(f"\n Vérification de la connexion avec le capteur...")
         ports = [port.device for port in serial.tools.list_ports.comports()]
 
         # check if the camera is connected to COM3
@@ -502,7 +476,7 @@ class PowerMeterApp:
                     pass
 
                 # intialize the powermeter object
-                self.pm = PowerMeter_test()
+                self.pm = PowerMeter()
 
                 # check if the powermeter class's init worked
                 if self.pm.dev is not None:
@@ -517,8 +491,9 @@ class PowerMeterApp:
             print(f" Veuillez connecter / reconnecter le capteur.")
 
             # powermeter instance for test mode
-            self.pm = PowerMeter_test()
+            self.pm = PowerMeter()
             self.cam_is_connected = False
+            self.cam_is_refreshing = False
 
     def update_loop(self, test=False):
         """
@@ -528,198 +503,108 @@ class PowerMeterApp:
 
             # real use mode
             if not test:
-                try:
-                    # get the mean temperature from the powermeter
-                    mean_temp = np.mean(self.pm.get_temp())
-                    last = len(self.plot_x_1) if hasattr(self, 'plot_x_1') else 0
 
-                    # recording disabled
-                    if self.total_saving_duration is None:
-                        self.plot_x_1.append(last)
-                        self.plot_y_1.append(mean_temp)
-                        self.ax_1.clear()
-                        self.ax_1.plot(self.plot_x_1, self.plot_y_1)
-                        self.ax_1.set_xlabel('Temps [s]')
-                        self.ax_1.set_ylabel('Puissance (mW)')
-                        self.ax_1.grid(True)
-                        self.canvas_1.draw()
-                        self.pw_measurement_label.config(text=f"{mean_temp:.2f} mW")
-                        self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
+                # check if the camera is connected
+                self.check_connection()
+                if self.cam_is_connected:
+                    try:
+                        # get the mean temperature from the powermeter
+                        mean_temp = np.nanmax(self.pm.get_temp())
+                        last = len(self.plot_x_1) if hasattr(self, 'plot_x_1') else 0
 
-                    # recording enabled
-                    else:
-                        self.plot_x_1.append(last)
-                        self.ax_1.set_xlim(0, self.total_saving_duration)
-                        self.plot_y_1.append(mean_temp)
-                        self.ax_1.plot(self.plot_x_1, self.plot_y_1)
-                        self.ax_1.set_xlabel('Temps [s]')
-                        self.ax_1.set_ylabel('Puissance (mW)')
-                        self.ax_1.grid(True)
-                        self.canvas_1.draw()
-                        self.pw_measurement_label.config(text=f"{mean_temp:.2f} mW")
-
-                        # current saving time < total saving duration
-                        if self.current_save_duration < self.total_saving_duration:
-                            self.current_save_duration += self.power_time_inc / 1000
+                        # recording disabled
+                        if self.total_saving_duration is None:
+                            self.plot_x_1.append(last)
+                            self.plot_y_1.append(mean_temp)
+                            self.ax_1.clear()
+                            self.ax_1.plot(self.plot_x_1, self.plot_y_1)
+                            self.ax_1.set_xlabel('Temps [s]')
+                            self.ax_1.set_ylabel('Puissance (mW)')
+                            self.ax_1.grid(True)
+                            self.canvas_1.draw()
+                            self.pw_measurement_label.config(text=f"{mean_temp:.2f} mW")
                             self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
 
-                        # current saving time >= total saving duration
+                        # recording enabled
                         else:
-                            self.wavelengths_1 = self.plot_x_1
-                            self.power_values_1 = self.plot_y_1
-                            self.save_data(self.recording_path)
+                            self.plot_x_1.append(last)
+                            self.ax_1.set_xlim(0, self.total_saving_duration)
+                            self.plot_y_1.append(mean_temp)
+                            self.ax_1.plot(self.plot_x_1, self.plot_y_1)
+                            self.ax_1.set_xlabel('Temps [s]')
+                            self.ax_1.set_ylabel('Puissance (mW)')
+                            self.ax_1.grid(True)
+                            self.canvas_1.draw()
+                            self.pw_measurement_label.config(text=f"{mean_temp:.2f} mW")
 
-                            print(" Fin de l'acquisition de données.")
-                            self.start_button.config(text="    Démarrer    ")
+                            # current saving time < total saving duration
+                            if self.current_save_duration < self.total_saving_duration:
+                                self.current_save_duration += self.power_time_inc / 1000
+                                self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
 
-                            # enable buttons
-                            self.clear_button_1.config(state="normal")
-                            self.clear_button_2.config(state="normal")
-                            self.save_button_1.config(state="normal")
-                            self.save_button_2.config(state="normal")
-                            self.wavelength_menu.config(state="normal")
-                            self.toggle_button.enable()
-                            self.test_duration_entry.config(state="normal")
+                            # current saving time >= total saving duration
+                            else:
+                                self.wavelengths_1 = self.plot_x_1
+                                self.power_values_1 = self.plot_y_1
+                                self.save_data(self.recording_path)
 
-                            self.cam_is_refreshing = False
-                            self.recording_enabled = False
-                            self.toggle_recording = False
-                            self.toggle_button.toggle()
-                            self.current_save_duration = 0
-                except Exception as e:
-                    print(f" Erreur lors de la prise de mesure: {e}.")
+                                print(" Fin de l'acquisition de données.")
+                                self.start_button.config(text="    Démarrer    ")
 
-                    # recording disabled --> call the update_loop function again in real use mode
-                    if self.total_saving_duration is None:
-                        self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
+                                # enable buttons
+                                self.enable_buttons()
 
-                    # recording enabled
-                    else:
-                        # current saving time < total saving duration
-                        if self.current_save_duration < self.total_saving_duration:
-                            self.current_save_duration += self.power_time_inc / 1000
+                                self.cam_is_refreshing = False
+                                self.recording_enabled = False
+                                self.toggle_recording = False
+                                self.toggle_button.toggle()
+                                self.current_save_duration = 0
+                    except Exception as e:
+                        print(f" Erreur lors de la prise de mesure: {e}.")
+
+                        # recording disabled --> call the update_loop function again in real use mode
+                        if self.total_saving_duration is None:
                             self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
 
-                        # current saving time >= total saving duration
+                        # recording enabled
                         else:
-                            self.wavelengths_1 = self.plot_x_1
-                            self.power_values_1 = self.plot_y_1
-                            self.save_data(self.recording_path)
+                            # current saving time < total saving duration
+                            if self.current_save_duration < self.total_saving_duration:
+                                self.current_save_duration += self.power_time_inc / 1000
+                                self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
 
-                            print(" Fin de l'acquisition de données.")
-                            self.start_button.config(text="    Démarrer    ")
+                            # current saving time >= total saving duration
+                            else:
+                                self.wavelengths_1 = self.plot_x_1
+                                self.power_values_1 = self.plot_y_1
+                                self.save_data(self.recording_path)
 
-                            # enable buttons
-                            self.clear_button_1.config(state="normal")
-                            self.clear_button_2.config(state="normal")
-                            self.save_button_1.config(state="normal")
-                            self.save_button_2.config(state="normal")
-                            self.wavelength_menu.config(state="normal")
-                            self.toggle_button.enable()
-                            self.test_duration_entry.config(state="normal")
+                                print(" Fin de l'acquisition de données.")
+                                self.start_button.config(text="    Démarrer    ")
 
-                            self.cam_is_refreshing = False
-                            self.recording_enabled = False
-                            self.toggle_recording = False
-                            self.toggle_button.toggle()
-                            self.current_save_duration = 0
+                                # enable buttons
+                                self.enable_buttons()
+
+                                self.cam_is_refreshing = False
+                                self.recording_enabled = False
+                                self.toggle_recording = False
+                                self.toggle_button.toggle()
+                                self.current_save_duration = 0
+                # cam is disconnected
+                else:
+                    print(" Veuillez reconnecter le capteur.")
+                    self.cam_is_refreshing = False
+                    self.start_button.config(text="    Démarrer    ")
+
             # test mode
             else:
-                try:
-                    # get the test mean temperature from the powermeter
-                    mean_test_temp = self.pm.get_test_moy_temp()
-                    last = len(self.plot_x_1) if hasattr(self, 'plot_x_1') else 0
+                return
 
-                    # recording disabled
-                    if self.total_saving_duration is None:
-                        self.plot_x_1.append(last)
-                        self.plot_y_1.append(mean_test_temp)
-                        self.ax_1.clear()
-                        self.ax_1.plot(self.plot_x_1, self.plot_y_1)
-                        self.ax_1.set_xlabel('Temps [s]')
-                        self.ax_1.set_ylabel('Puissance (mW)')
-                        self.ax_1.grid(True)
-                        self.canvas_1.draw()
-                        self.pw_measurement_label.config(text=f"{mean_test_temp:.2f} mW")
-                        self.root.after(self.power_time_inc, lambda: self.update_loop(test=True))
 
-                    # recording enabled
-                    else:
-                        self.plot_x_1.append(last)
-                        self.ax_1.set_xlim(0, self.total_saving_duration)
-                        self.plot_y_1.append(mean_test_temp)
-                        self.ax_1.plot(self.plot_x_1, self.plot_y_1)
-                        self.ax_1.set_xlabel('Temps [s]')
-                        self.ax_1.set_ylabel('Puissance (mW)')
-                        self.ax_1.grid(True)
-                        self.canvas_1.draw()
-                        self.pw_measurement_label.config(text=f"{mean_test_temp:.2f} mW")
 
-                        # current saving time < total saving duration
-                        if self.current_save_duration < self.total_saving_duration:
-                            self.current_save_duration += self.power_time_inc / 1000
-                            self.root.after(self.power_time_inc, lambda: self.update_loop(test=True))
 
-                        # current saving time >= total saving duration
-                        else:
-                            self.wavelengths_1 = self.plot_x_1
-                            self.power_values_1 = self.plot_y_1
-                            self.save_data(self.recording_path)
 
-                            print(" Fin de la génération de données.")
-                            self.start_button.config(text="    Démarrer    ")
 
-                            # enable buttons
-                            self.clear_button_1.config(state="normal")
-                            self.clear_button_2.config(state="normal")
-                            self.save_button_1.config(state="normal")
-                            self.save_button_2.config(state="normal")
-                            self.wavelength_menu.config(state="normal")
-                            self.toggle_button.enable()
-                            self.test_duration_entry.config(state="normal")
-
-                            self.cam_is_refreshing = False
-                            self.recording_enabled = False
-                            self.toggle_recording = False
-                            self.toggle_button.toggle()
-                            self.current_save_duration = 0
-                except Exception as e:
-                    print(f" Erreur lors de la génération de données de test: {e}.")
-
-                    # recording disabled --> call the update_loop function again in test mode
-                    if self.total_saving_duration is None:
-                        self.root.after(self.power_time_inc, lambda: self.update_loop(test=True))
-
-                    # recording enabled
-                    else:
-                        # current saving time < total saving duration
-                        if self.current_save_duration < self.total_saving_duration:
-                            self.current_save_duration += self.power_time_inc / 1000
-                            self.root.after(self.power_time_inc, lambda: self.update_loop(test=True))
-
-                        # current saving time >= total saving duration
-                        else:
-                            self.wavelengths_1 = self.plot_x_1
-                            self.power_values_1 = self.plot_y_1
-                            self.save_data(self.recording_path)
-
-                            print(" Fin de la génération de données.")
-                            self.start_button.config(text="    Démarrer    ")
-
-                            # enable buttons
-                            self.clear_button_1.config(state="normal")
-                            self.clear_button_2.config(state="normal")
-                            self.save_button_1.config(state="normal")
-                            self.save_button_2.config(state="normal")
-                            self.wavelength_menu.config(state="normal")
-                            self.toggle_button.enable()
-                            self.test_duration_entry.config(state="normal")
-
-                            self.cam_is_refreshing = False
-                            self.recording_enabled = False
-                            self.toggle_recording = False
-                            self.toggle_button.toggle()
-                            self.current_save_duration = 0
 
     def update_cam(self):
         """
@@ -734,15 +619,15 @@ class PowerMeterApp:
                 # process is started
                 if self.cam_is_refreshing:
                     try:
-                        self.camera_data = self.pm.get_temp()
-                        mask = checkers_grid((24, 32), 3, 1)
-                        self.camera_data = self.camera_data * mask
-                        self.ax_2.clear()
-                        self.ax_2.imshow(self.camera_data, cmap="plasma")
-                        self.ax_2.set_title("Image thermique")
-                        self.ax_2.axis("off")
-                        self.canvas_2.draw()
-                        self.root.after(self.cam_time_inc, self.update_cam)
+                        # update the position graph
+                        self.position_tuple = self.pm.get_position()    # ligne à changer pour avoir la position en forme de tuple
+                        self.display_position(self.position_tuple)
+
+                        # update position label
+                        self.pos_measurement_label.config(text=f"[{self.position_tuple[0]:.2f}:{self.position_tuple[1]:.2f}]")
+
+                        # update the position graph continuously
+                        self.root.after(self.power_time_inc, self.update_cam)
                     except Exception as e:
                         print(f" Erreur lors de la mise à jour de la caméra: {e}.")
 
@@ -751,24 +636,21 @@ class PowerMeterApp:
                 # process is started
                 if self.cam_is_refreshing:
                     try:
-                        self.camera_data = self.pm.get_temp()
-                        self.ax_2.clear()
-                        self.ax_2.imshow(self.camera_data, cmap="plasma")
-                        self.ax_2.set_title("Image thermique")
-                        self.ax_2.axis("off")
-                        self.canvas_2.draw()
-                        # self.save_cam_data(self.camera_data)
-                        self.root.after(self.cam_time_inc, self.update_cam)
+                        # update the position graph
+                        self.position_tuple = self.pm.get_temp()    # ligne à changer pour avoir la position en forme de tuple
+                        self.display_position(self.position_tuple)
+
+                        # update position label
+                        self.pos_measurement_label.config(text=f"[{self.position_tuple[0]:.2f}:{self.position_tuple[1]:.2f}]")
+
+                        # update the position graph continuously
+                        self.root.after(self.power_time_inc, self.update_cam)
                     except Exception as e:
                         print(f" Erreur lors de l'enregistrement des données de la caméra: {e}.")
 
         # camera is disconnected
         else:
-            self.ax_2.clear()
-            self.ax_2.imshow(np.zeros((self.pm.rows, self.pm.cols), dtype=np.float32), cmap="plasma")
-            self.ax_2.set_title("Image thermique")
-            self.ax_2.axis("off")
-            self.canvas_2.draw()
+            self.click_clear_2()
 
     def display_saving_time(self, event=None):
         """
@@ -903,23 +785,27 @@ class PowerMeterApp:
                 except Exception as e:
                     print(f" La longueur d'onde entrée manuellement doit être un nombre !")
 
-    def display_data_1(self, data_tuple):
-        if data_tuple is None:
+    def display_position(self, position_tuple):
+        """
+        draws the coordinate on the position graph
+        """
+        self.click_clear_2()
+        if position_tuple is None:
             return
+        if isinstance(position_tuple[0], np.floating):
+            position_tuple = float(position_tuple[0]), float(position_tuple[1])
 
-        self.wavelengths_1, self.power_values_1, file_path = data_tuple
-        self.ax_1.clear()
-        self.ax_1.plot(self.wavelengths_1, self.power_values_1, label="wpcurve", color="blue", linewidth=1)
-        self.ax_1.set_xlabel("Wavelength [nm]")
-        self.ax_1.set_ylabel("Power [dB]")
-        self.ax_1.set_title("OSA data 1")
-        self.ax_1.legend()
-        self.ax_1.grid(True)
+        x_pos, y_pos = position_tuple[0], position_tuple[1]
 
-        self.canvas_1.draw()
+        # plot the position dot and circle
+        self.ax_2.scatter(x_pos, y_pos, s=5, color="black")
+        pos_circle = Circle((x_pos, y_pos), 0.75, color='black', fill=False)
+        self.ax_2.add_patch(pos_circle)
 
-        # log to terminal
-        print(f" Fichier chargé: {str(file_path)}")
+        # place grid in the background
+        self.ax_2.grid(True)
+        self.ax_2.set_axisbelow(True)
+        self.canvas_2.draw()
 
     def click_clear_1(self, logs=True):
         """
@@ -939,10 +825,6 @@ class PowerMeterApp:
         self.ax_1.grid(True)
         self.canvas_1.draw()
 
-        # log to terminal
-        if logs:
-            print(" Graphique de puissance précédent effacé.")
-
     def click_clear_2(self):
         """
         clears the plot
@@ -951,19 +833,25 @@ class PowerMeterApp:
         self.plot_y_2 = []
         self.ax_2.clear()
 
+        self.ax_2.set_title("Position du faisceau")
         self.ax_2.set_xlabel("Position [mm]")
         self.ax_2.set_ylabel("Position [mm]")
-        self.ax_2.set_xlim(-6, 6)
-        self.ax_2.set_ylim(-6, 6)
+
+        # graph the sensor's area
+        circle = Circle((0, 0), 25, color='black', fill=False)
+        self.ax_2.add_patch(circle)
+        self.ax_2.set_xlim(-28, 28)
+        self.ax_2.set_ylim(-28, 28)
+        self.ax_2.set_aspect("equal")
+
+        # place grid in the background
         self.ax_2.grid(True)
+        self.ax_2.set_axisbelow(True)
 
         self.canvas_2.draw()
 
-        # log to terminal
-        print(" Graphique de position précédent effacé.")
-
     def on_closing(self):
-        print(" Closing the application...")        
+        print(" Fermeture de l'application...")        
         try:
             self.is_refreshing = False
             self.cam_is_refreshing = False
@@ -973,7 +861,7 @@ class PowerMeterApp:
             self.root.quit()
             self.root.destroy()
         except Exception as e:
-            print(f" Error closing the application: {e}")
+            print(f" Erreur lors de la fermeture de l'application: {e}")
         finally:
             sys.exit(0)
 
@@ -987,7 +875,7 @@ class PowerMeterApp:
         try:
             os.startfile(image_path)
         except Exception as e:
-            print(f"Erreur lors de l'ouverture de l'image : {e}")
+            return
 
 
 if __name__ == "__main__":
