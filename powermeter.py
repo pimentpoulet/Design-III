@@ -177,7 +177,7 @@ class PowerMeter_nocam:
     def anneau(self, centre, rayon, largeur):
         nx, ny = self.cols, self.rows
         x0, y0 = centre
-        X, Y = np.ogrid[:nx, :ny]
+        X, Y = np.ogrid[:ny, :nx]
 
         distance = np.sqrt((X - x0)**2 + (Y - y0)**2)
         print("ah")
