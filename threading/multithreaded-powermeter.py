@@ -73,10 +73,8 @@ class PowerMeterThread(threading.Thread):
 
                 elif command == "get_position":
                     try:
-                        # Note: This is a mock implementation as your original code doesn't have get_position
-                        # We'll simulate a position based on the temperature data
-                        x = (np.random.random() - 0.5) * 10
-                        y = (np.random.random() - 0.5) * 10
+                        _, pos = self.pm.get_power_center()
+                        x, y = pos[0], pos[1]
                         self.result_queue.put(("position_data", (float(x), float(y))))
                     except Exception as e:
                         self.result_queue.put(("position_data", None, str(e)))
