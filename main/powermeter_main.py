@@ -1,5 +1,4 @@
 import numpy as np
-import cv2
 
 from mlx90640_evb9064x import *
 from mlx90640 import *
@@ -258,7 +257,7 @@ class PowerMeter_nocam:
     def get_center(self, params0: tuple, params1: tuple) -> tuple:
         """ Retourne le centre de la gaussienne 2D pour deux cadrillés différents."""
         c_0, c_1 = params0[0], params1[0]
-        return ((c_0[0] + c_1[0]) / 2)-11.5, ((c_0[1] + c_1[1]) / 2)-15.5
+        return (((c_0[0] + c_1[0]) / 2)-11.5)*0.95, (((c_0[1] + c_1[1]) / 2)-15.5)*0.95
         
     def get_power_center(self) -> tuple:
         P, params = self.get_power()

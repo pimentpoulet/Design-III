@@ -141,15 +141,15 @@ def reorder_calibration_data() -> np.ndarray:
 
 
 def main_test():
-    p_min = 2.5
-    p_max = 10
-    step = 2.5
+    p_min = 0
+    p_max = 5
+    step = 5
     nb_step = int((p_max-p_min)/step)+1
     time_per_step = 60
-    name = f'test_{p_min}W-{p_max}W_step{step}W'
-    if not os.path.exists("test_data"):
-        os.mkdir("test_data")
-    os.chdir("test_data")
+    name = f'test_450_{p_min}W-{p_max}W_step{step}W'
+    if not os.path.exists("test_data_ref"):
+        os.mkdir("test_data_ref")
+    os.chdir("test_data_ref")
     try:
         # Initialisation de la caméra
         pm = PowerMeter(5, 10)
@@ -166,7 +166,7 @@ def main_test():
         pows = np.zeros((nb_step))
         print("Prêt à enregistrer")
         for i in range(nb_step):
-            pow = (i+1)*step
+            pow = (i)*step
             print(f"Calibration pour {pow} W")
             # input("Appuyez sur une touche lorsque vous êtes prêt à allumer le laser.\n")
 
@@ -208,9 +208,9 @@ def affiche_graphique(x, y, titre, xlabel, ylabel):
     return
 
 if __name__ == "__main__":
-    #main_test()
-    pows = np.load('test_data/test_973nm_0W-20W_step2.5W_temps_pow.npy')
-    print(np.nanmax(pows, axis=0))
+    main_test()
+    #pows = np.load('test_data/test_973nm_0W-20W_step2.5W_temps_pow.npy')
+    #print(np.nanmax(pows, axis=0))
     
     # reorder_calibration_data()
 
