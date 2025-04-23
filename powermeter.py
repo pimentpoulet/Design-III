@@ -160,6 +160,8 @@ class PowerMeter_nocam:
         odd_even (None toute la plaque, 0 plaque dessus et 1 plaque dessous) et pour la moitié du buffer 
         choisie (half: 0 ou 1) ou l'ensemble du buffer (half: None)."""
         temp = self.get_moy_temp(half)
+        ref = np.mean(np.copy(temp[0:2, 0:2]))
+        temp[0:2, 0:2] = np.nan
         temp = self.filter_temp(temp)
         # temp = self.filter_temp(self.get_moy_temp(half))
         if odd_even is None:
@@ -172,7 +174,7 @@ class PowerMeter_nocam:
         amp= params[2]
         k = params[3]
         sigma = params[4:]
-        return (c, amp, k, sigma), cov
+        return (c, amp, k, sigma, ref), cov
     
     def anneau(self, centre, rayon, largeur):
         nx, ny = self.cols, self.rows
@@ -220,7 +222,7 @@ class PowerMeter_nocam:
         dt = self.buffer_size /2 / (2**(refresh-1))
         
         # P = (ratio0+ratio1)/2*self.gain+self.offset
-        P = (self.tau*(ratio0-ratio1)/dt + ratio1)*self.gain+self.offset
+        P = (self.tau*(ratio0-ratio1)/dt + ratio1)*self.gain+self.offset-(params1[4]/largeur)
         # self.update_time_series((P, (params0, params1)))
         if abs(largeur) > 1:
             # return np.mean(self.time_series_array[-5:]), (params0, params1)

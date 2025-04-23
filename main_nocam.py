@@ -232,7 +232,7 @@ def afficher_puissance_serie_t():
 
 def afficher_power():
     temps = np.load("test_data_aligne2/test_976_0W-20W_step2.5W_temps_pow.npy")
-    pm = PowerMeter_nocam(gain=1, tau=0, offset=0)
+    pm = PowerMeter_nocam(gain=1, tau=0, offset=3)
     power_series = []
     for i in range(temps.shape[0]):
         pm.update_temperature(pm.get_temp(temps, i))
