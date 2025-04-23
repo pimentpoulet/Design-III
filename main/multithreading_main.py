@@ -3,6 +3,8 @@ import threading
 import queue
 import time
 import numpy as np
+import serial
+
 from powermeter_main import PowerMeter
 from UI_main import PowerMeterApp
 
@@ -13,8 +15,8 @@ class PowerMeterThread(threading.Thread):
     """
     def __init__(self, command_queue, result_queue):
         threading.Thread.__init__(self, daemon=True)
-        self.command_queue = command_queue  # Queue for receiving commands from UI
-        self.result_queue = result_queue    # Queue for sending results back to UI
+        self.command_queue = command_queue    # Queue for receiving commands from UI
+        self.result_queue = result_queue      # Queue for sending results back to UI
         self.running = False
         self.pm = None
 
@@ -52,13 +54,6 @@ class PowerMeterThread(threading.Thread):
                     except Exception as e:
                         self.result_queue.put(("temperature_updated", False, str(e)))
 
-                elif command == "get_temp":
-                    try:
-                        temp = self.pm.get_temp()
-                        self.result_queue.put(("temp_data", temp))
-                    except Exception as e:
-                        self.result_queue.put(("temp_data", None, str(e)))
-
                 elif command == "get_moy_temp":
                     try:
                         half = args.get("half", None) if args else None
@@ -67,19 +62,12 @@ class PowerMeterThread(threading.Thread):
                     except Exception as e:
                         self.result_queue.put(("moy_temp_data", None, str(e)))
 
-                elif command == "get_test_moy_temp":
-                    try:
-                        temp = self.pm.get_test_moy_temp()
-                        self.result_queue.put(("test_moy_temp_data", temp))
-                    except Exception as e:
-                        self.result_queue.put(("test_moy_temp_data", None, str(e)))
-
                 elif command == "get_position":
                     try:
                         result = self.pm.get_power_center()
                         
                         # Check that we got a tuple with at least 2 elements
-                        if isinstance(result, tuple) and len(result) >= 2:
+                        if isinstance(result, tuple) and len(result) > 2:
                             P, pos = result
 
                             # Check that pos is not None and has the expected format
@@ -113,10 +101,11 @@ class ThreadedPowerMeterApp(PowerMeterApp):
     Modified PowerMeterApp that uses a worker thread for PowerMeter operations
     """
     def __init__(self, root):
+        
         # Initialize command and result queues
         self.command_queue = queue.Queue()
         self.result_queue = queue.Queue()
-
+        
         # Call parent constructor
         super().__init__(root)
 
@@ -128,18 +117,146 @@ class ThreadedPowerMeterApp(PowerMeterApp):
 
     def check_connection(self):
         """
-        Start the worker thread instead of directly creating a PowerMeter instance
+        checks the camera's connection status
+        """
+        ports = [port.device for port in serial.tools.list_ports.comports()]
+
+        # check if the camera is connected to COM3
+        if "COM3" in ports:
+            try:
+                with serial.Serial("COM3", baudrate=9600, timeout=1) as _:
+                    pass
+
+                # test an initialization of the powermeter class
+                self.pm = PowerMeter()
+
+                # check if the powermeter class's init worked
+                if self.pm.dev is not None:
+                    self.cam_is_connected = True
+                else:
+                    self.cam_is_connected = False
+            except serial.SerialException as e:
+                self.cam_is_connected = True
+
+    def click_start(self):
+        """
+        setups the start button, updates the flags and starts data acquisition
+        """
+        if self.start_button.cget("text") == "    Démarrer    " or self.start_button.cget("text") == "     Démarrer l'enregistrement      ":
+            self.check_connection()
+
+        print(f" self.cam_is_connected: {self.cam_is_connected}")
+        print(f" self.pm: {self.pm}")
+
+        # camera is connected
+        if self.cam_is_connected:
+
+            # process is started
+            if not self.cam_is_refreshing:
+
+                # set the stop button according to sensor use mode
+                if self.recording_enabled:
+                    if self.total_saving_duration is not None:
+                        self.start_button.config(text="     Arrêter l'enregistrement      ")
+                    else:
+                        print(" Veuillez spécifier une durée d'enregistrement.")
+                        return
+                else:
+                    self.start_button.config(text="     Arrêter      ")
+
+                # disable buttons
+                self.disable_buttons()
+
+                # start an acquisition thread
+                self.start_acquisition_thread()
+                
+                print(" Processus démarré !")
+                self.cam_is_refreshing = True
+
+                # update pm data
+                self.update_pm_data()
+
+                # call update functions in real use mode
+                self.update_loop()
+                self.update_cam()
+
+            # process is stopped
+            else:
+                print(" Processus arrêté !")
+                self.wavelengths_1 = self.plot_x_1
+                self.power_values_1 = self.plot_y_1
+                self.cam_is_refreshing = False
+
+                # enable buttons
+                self.enable_buttons()
+
+                # kill the acquisition thread
+                self.kill_acquisition_thread()
+
+                # disable the recording flag if recording
+                if self.recording_enabled:
+                    self.recording_enabled = False
+                    self.total_saving_duration = None
+                    self.total_saving_duration_entered = False
+                    self.toggle_button.toggle()
+
+                    # reset the current saving counter
+                    self.current_save_duration = 0
+                self.start_button.config(text="    Démarrer    ")
+
+        # camera is disconnected
+        else:
+            print(" Veuillez connecter / reconnecter le capteur.")
+
+    def start_acquisition_thread(self):
+        """
+        Start an acquisition thread if one is not already running
         """
         if self.worker_thread is None or not self.worker_thread.is_alive():
+            # Initialize command and result queues if they don't exist
+            if not hasattr(self, 'command_queue'):
+                self.command_queue = queue.Queue()
+            if not hasattr(self, 'result_queue'):
+                self.result_queue = queue.Queue()
+
             # Start the worker thread
             self.worker_thread = PowerMeterThread(self.command_queue, self.result_queue)
             self.worker_thread.start()
-
-            # We'll set the connection status based on thread init response
-            self.cam_is_connected = False  # Initially assume not connected
-            print(f"\n Démarrage du capteur et vérification de la connection...")
+            return True
         else:
-            return
+            print(f" Thread d'acquisition déjà en cours d'exécution.")
+            return False
+
+    def kill_acquisition_thread(self):
+        """
+        Safely terminates the acquisition thread if it's running
+        """
+        if self.worker_thread and self.worker_thread.is_alive():
+            try:
+                # Send stop command to thread
+                self.command_queue.put(("stop", None))
+
+                # Wait for the thread to finish with timeout
+                self.worker_thread.join(timeout=1.0)
+
+                # If thread is still alive after timeout, try more aggressive cleanup
+                if self.worker_thread.is_alive():
+                    if hasattr(self.worker_thread, 'cleanup'):
+                        self.worker_thread.cleanup()
+                    print(f" Le thread ne répond pas, arrêt forcé.")
+                else:
+                    print(f" Thread d'acquisition arrêté avec succès.")
+
+                self.worker_thread = None
+                return True
+
+            except Exception as e:
+                print(f" Erreur lors de l'arrêt du thread: {e}")
+                return False
+        else:
+            print(f" Aucun thread d'acquisition en cours d'exécution.")
+            self.worker_thread = None
+            return True
 
     def update_pm_data(self):
         """
@@ -149,45 +266,38 @@ class ThreadedPowerMeterApp(PowerMeterApp):
             self.command_queue.put(("update_temperature", None))
 
         if self.cam_is_refreshing:
-            self.root.after(500, self.update_pm_data)
+            self.root.after(31, self.update_pm_data)
 
-    def update_loop(self, test=False):
+    def update_loop(self):
         """
         Modified update_loop that uses the worker thread
         """
         if self.cam_is_refreshing:
-            # Request data from worker thread
-            if test:
-                self.command_queue.put(("get_test_moy_temp", None))
-            else:
-                self.command_queue.put(("get_temp", None))
-            
             # The actual update will happen when process_results handles the response
-            
             # Schedule the next update
             if self.total_saving_duration is None or self.current_save_duration < self.total_saving_duration:
                 if self.total_saving_duration is not None:
                     self.current_save_duration += self.power_time_inc / 1000
-                self.root.after(self.power_time_inc, lambda: self.update_loop(test))
+                self.root.after(self.power_time_inc, lambda: self.update_loop())
             else:
                 # End of recording
                 self.wavelengths_1 = self.plot_x_1
                 self.power_values_1 = self.plot_y_1
                 self.save_data(self.recording_path)
-                
+
                 print(" Fin de l'acquisition de données.")
                 self.start_button.config(text="    Démarrer    ")
-                
+
                 # Enable buttons
                 self.enable_buttons()
-                
+
                 self.cam_is_refreshing = False
                 self.recording_enabled = False
                 self.toggle_recording = False
                 if hasattr(self, 'toggle_button') and self.toggle_button:
                     self.toggle_button.toggle()
                 self.current_save_duration = 0
-    
+
     def update_cam(self):
         """
         Modified update_cam that uses the worker thread
@@ -213,29 +323,23 @@ class ThreadedPowerMeterApp(PowerMeterApp):
                     success = result[1]
                     if success:
                         self.cam_is_connected = True
-                        print(" Initialisation du capteur réussie.")
+                        # print(" Initialisation du capteur réussie.")
                     else:
                         self.cam_is_connected = False
-                        print(f" Initialisation du capteur impossible: {result[2]}")
+                        # print(f" Initialisation du capteur impossible: {result[2]}")
                         
                 elif result_type == "temperature_updated":
                     # Temperature was updated, nothing to do here
                     pass
                     
                 elif result_type == "temp_data":
+                    print(f"result: {result}")
                     if len(result) > 2:  # Error occurred
                         print(f" Erreur lors du calcul de température: {result[2]}")
                     else:
                         temp_data = result[1]
                         # Process temperature data for plotting
                         mean_temp = np.nanmax(temp_data)
-                        self.update_power_graph(mean_temp)
-                        
-                elif result_type == "test_moy_temp_data":
-                    if len(result) > 2:  # Error occurred
-                        print(f" Erreur lors du calcul de température de test: {result[2]}")
-                    else:
-                        mean_temp = result[1]
                         self.update_power_graph(mean_temp)
 
                 elif result_type == "position_data":

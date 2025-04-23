@@ -46,14 +46,8 @@ class PowerMeter_nocam:
         self.time_series_array[0] = time_series
 
     def filter_time_series(self, time_series: None) -> float:
-
-        print(f" time_series: {time_series}")
-
         if time_series is not None:
             self.update_time_series(time_series)
-        
-        print(" just before returning")
-
         return savgol_filter(self.time_series_array, 15, 4, mode='nearest')[-1]
 
     def get_moy_temp(self, half = None) -> np.ndarray:
@@ -147,9 +141,7 @@ class PowerMeter_nocam:
         X, Y = np.ogrid[:ny, :nx]
 
         distance = np.sqrt((X - x0)**2 + (Y - y0)**2)
-        print("ah")
         mask = (distance >= rayon - largeur / 2) & (distance <= rayon + largeur / 2)
-        print("oh")
         return mask
     
     def get_diff_temp(self, half: int = 0) -> float:
@@ -166,11 +158,11 @@ class PowerMeter_nocam:
         try:
             (params0, cov0), (params1, cov1) = self.get_gaussian_params(half=0), self.get_gaussian_params(half=1)
         except Exception as e:
-            print(f"Erreur: Impossible de récupérer les paramètres de la gaussienne --> {e}.")
+            print(f" Erreur: Impossible de récupérer les paramètres de la gaussienne --> {e}.")
             return None, None
         thresh = 0.5
         if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
-            print("Erreur: La covariance est trop élevée.")
+            print(" Erreur: La covariance est trop élevée.")
             return 0.0, 0.0
         p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
         p_diff0 = self.filter_time_series(p_diff0)
@@ -186,11 +178,11 @@ class PowerMeter_nocam:
         try:
             (params0, cov0), (params1, cov1) = self.get_gaussian_params(half=0), self.get_gaussian_params(half=1)
         except Exception as e:
-            print(f"Erreur: Impossible de récupérer les paramètres de la gaussienne --> {e}.")
+            print(f" Erreur: Impossible de récupérer les paramètres de la gaussienne --> {e}.")
             return None, None
         thresh = 0.5
         if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
-            print("Erreur: La covariance est trop élevée.")
+            print(" Erreur: La covariance est trop élevée.")
             return 0.0, 0.0
         p_aire0, p_aire1 = params0[1]*params0[3][0]*params0[3][1], params1[1]*params1[3][0]*params1[3][1]
         refresh = 6
@@ -216,12 +208,7 @@ class PowerMeter_nocam:
         
     def get_power_center(self) -> tuple:
         
-        print(" in get_power_center()")
-
         P, params = self.get_power()
-
-        print(" in get_power_center() after get_power()")
-
         if params is None:
             return None, None
         elif params == 0.0:
@@ -233,7 +220,7 @@ class PowerMeter_nocam:
         (params0, cov0), (params1, cov1) = self.get_gaussian_params(odd_even=0), self.get_gaussian_params(odd_even=1)
         thresh = 0.5
         if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
-            print("Erreur: La covariance est trop élevée.")
+            print(" Erreur: La covariance est trop élevée.")
             return 0.0
         p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
         ratio = p_diff0/p_diff1
@@ -253,12 +240,15 @@ class PowerMeter(PowerMeter_nocam):
             self.dev.dump_eeprom()
             self.dev.extract_parameters()
             self.camera_available = True
+            print(f" self.camera_available: {self.camera_available}")
 
         except Exception as e:
+            print(self.dev)
             self.dev = None
             print(f" Erreur: Initialisation de la caméra impossible --> {e}.")
 
     def get_temp(self) -> np.ndarray:
+        print(self.dev)
         self.dev.get_frame_data()
         temp_amb = self.dev.get_ta() # Compensation de la température ambiante
         emissivity = 1.0

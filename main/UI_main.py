@@ -61,7 +61,6 @@ class PowerMeterApp:
         self.total_saving_duration = None    #  si c'est None, la durée d'enregistrement est illimitée
         self.current_save_duration = 0
         self.power_time_inc = 1000           # ms --> updates power and position graphs at 1Hz
-        self.pm_update_time_inc = 32         # ms
 
         # save parameters
         self.recording_path = None
@@ -206,22 +205,23 @@ class PowerMeterApp:
 
         """ meas_frame """
 
+        # position measurement display
+        self.pos_label = tk.Label(self.meas_frame, text="Position du faisceau:", font=font_pw)
+        self.pos_label.grid(row=0, column=1, padx=15, pady=10, sticky="e")
+        self.pos_measurement_label = tk.Label(self.meas_frame, text="----", font=font_pw)
+        self.pos_measurement_label.grid(row=1, column=1, padx=0, pady=10)
+
         # power measurement display
         self.power_label = tk.Label(self.meas_frame, text="Puissance mesurée [W]:", font=font_pw)
-        self.power_label.grid(row=0, column=1, padx=15, pady=10, sticky="e")
+        self.power_label.grid(row=0, column=3, padx=15, pady=10, sticky="e")
         self.pw_measurement_label = tk.Label(self.meas_frame, text="----", font=font_pw)
-        self.pw_measurement_label.grid(row=0, column=2, padx=0, pady=10, sticky="w")
+        self.pw_measurement_label.grid(row=0, column=4, padx=0, pady=10, sticky="e")
 
         # wavelength measurement display
         self.wv_label = tk.Label(self.meas_frame, text="Longueur d'onde mesurée [nm]:", font=font_pw)
-        self.wv_label.grid(row=1, column=1, padx=15, pady=10, sticky="e")
+        self.wv_label.grid(row=1, column=3, padx=15, pady=10, sticky="e")
         self.wv_measurement_label = tk.Label(self.meas_frame, text="----", font=font_pw)
-        self.wv_measurement_label.grid(row=1, column=2, padx=0, pady=10, sticky="w")
-
-        self.pos_label = tk.Label(self.meas_frame, text="Position du faisceau:", font=font_pw)
-        self.pos_label.grid(row=0, column=3, padx=15, pady=10, sticky="e")
-        self.pos_measurement_label = tk.Label(self.meas_frame, text="----", font=font_pw)
-        self.pos_measurement_label.grid(row=1, column=3, padx=0, pady=10)
+        self.wv_measurement_label.grid(row=1, column=4, padx=0, pady=10, sticky="e")
 
         """ graph_frame """
 
@@ -267,12 +267,7 @@ class PowerMeterApp:
         self.clear_button_2 = tk.Button(self.graph_frame, text="Effacer le graphique de position",
                                         command=self.click_clear_2,
                                         font=font)
-        self.clear_button_2.grid(row=1, column=4, padx=10, pady=10, sticky="ew")
-
-        # save button 2
-        self.save_button_2 = tk.Button(self.graph_frame, text="Enregistrer l'image actuelle",
-                                       command=self.save_cam_data, font=font)
-        self.save_button_2.grid(row=1, column=5, padx=10, pady=10, sticky="ew")
+        self.clear_button_2.grid(row=1, column=4, padx=10, pady=10, sticky="w")
 
         """ term_frame """
 
@@ -377,7 +372,6 @@ class PowerMeterApp:
         self.clear_button_1.config(state="disabled")
         self.clear_button_2.config(state="disabled")
         self.save_button_1.config(state="disabled")
-        self.save_button_2.config(state="disabled")
         self.wavelength_menu.config(state="disabled")
         self.toggle_button.disable()
         self.test_duration_entry.config(state="disabled")
@@ -389,268 +383,107 @@ class PowerMeterApp:
         self.clear_button_1.config(state="normal")
         self.clear_button_2.config(state="normal")
         self.save_button_1.config(state="normal")
-        self.save_button_2.config(state="normal")
         self.wavelength_menu.config(state="normal")
         self.toggle_button.enable()
         self.test_duration_entry.config(state="normal")
 
-    def click_start(self):
-        """
-        setups the start button, updates the flags and starts data acquisition / test data generation
-        """
-        if self.start_button.cget("text") == "    Démarrer    " or self.start_button.cget("text") == "     Démarrer l'enregistrement      ":
-            self.check_connection()
-
-        # camera is connected
-        if self.cam_is_connected:
-
-            # process is started
-            if not self.cam_is_refreshing:
-
-                # set the stop button according to sensor use mode
-                if self.recording_enabled:
-                    if self.total_saving_duration is not None:
-                        self.start_button.config(text="     Arrêter l'enregistrement      ")
-                    else:
-                        print(" Veuillez spécifier une durée d'enregistrement.")
-                        return
-                else:
-                    self.start_button.config(text="     Arrêter      ")
-
-                # disable buttons
-                self.disable_buttons()
-
-                print(" Processus démarré !")
-                self.cam_is_refreshing = True
-
-                # update pm data
-                self.update_pm_data()
-
-                # call update functions in real use mode
-                self.update_loop(test=False)
-                self.update_cam()
-
-            # process is stopped
-            else:
-                print(" Processus arrêté !")
-                self.wavelengths_1 = self.plot_x_1
-                self.power_values_1 = self.plot_y_1
-                self.cam_is_refreshing = False
-
-                # enable buttons
-                self.enable_buttons()
-
-                # disable the recording flag if recording
-                if self.recording_enabled:
-                    self.recording_enabled = False
-                    self.total_saving_duration = None
-                    self.total_saving_duration_entered = False
-                    self.toggle_button.toggle()
-
-                    # reset the current saving counter
-                    self.current_save_duration = 0
-                self.start_button.config(text="    Démarrer    ")
-
-        # camera is disconnected
-        else:
-            return
-
-
-
-
-
-
-
-
-
-    def check_connection(self):
-        """
-        checks the camera's connection status
-        """
-        ports = [port.device for port in serial.tools.list_ports.comports()]
-
-        # check if the camera is connected to COM3
-        if "COM3" in ports:
-            try:
-                with serial.Serial("COM3", baudrate=9600, timeout=1) as _:
-                    pass
-
-                # intialize the powermeter object
-                self.pm = PowerMeter()
-
-                # check if the powermeter class's init worked
-                if self.pm.dev is not None:
-                    self.cam_is_connected = True
-                else:
-                    self.cam_is_connected = False
-            except serial.SerialException as e:
-                self.cam_is_connected = True
-
-        # the camera is disconnected
-        else:
-            print(f" Veuillez connecter / reconnecter le capteur.")
-
-            # powermeter instance for test mode
-            self.pm = PowerMeter()
-            self.cam_is_connected = False
-            self.cam_is_refreshing = False
-
-    def update_loop(self, test=False):
+    def update_loop(self):
         """
         updates the mean_temp plot every 100 ms
         """
         if self.cam_is_refreshing:
 
-            # real use mode
-            if not test:
+            # check if the camera is connected
+            self.check_connection()
+            if self.cam_is_connected:
+                try:
+                    # get the mean temperature from the powermeter
+                    mean_temp = np.nanmax(self.pm.get_temp())
+                    last = len(self.plot_x_1) if hasattr(self, 'plot_x_1') else 0
 
-                # check if the camera is connected
-                self.check_connection()
-                if self.cam_is_connected:
-                    try:
-                        # get the mean temperature from the powermeter
-                        mean_temp = np.nanmax(self.pm.get_temp())
-                        last = len(self.plot_x_1) if hasattr(self, 'plot_x_1') else 0
+                    # recording disabled
+                    if self.total_saving_duration is None:
+                        self.plot_x_1.append(last)
+                        self.plot_y_1.append(mean_temp)
+                        self.ax_1.clear()
+                        self.ax_1.plot(self.plot_x_1, self.plot_y_1)
+                        self.ax_1.set_xlabel('Temps [s]')
+                        self.ax_1.set_ylabel('Puissance (mW)')
+                        self.ax_1.grid(True)
+                        self.canvas_1.draw()
+                        self.pw_measurement_label.config(text=f"{mean_temp:.2f} mW")
+                        self.root.after(self.power_time_inc, lambda: self.update_loop())
 
-                        # recording disabled
-                        if self.total_saving_duration is None:
-                            self.plot_x_1.append(last)
-                            self.plot_y_1.append(mean_temp)
-                            self.ax_1.clear()
-                            self.ax_1.plot(self.plot_x_1, self.plot_y_1)
-                            self.ax_1.set_xlabel('Temps [s]')
-                            self.ax_1.set_ylabel('Puissance (mW)')
-                            self.ax_1.grid(True)
-                            self.canvas_1.draw()
-                            self.pw_measurement_label.config(text=f"{mean_temp:.2f} mW")
-                            self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
+                    # recording enabled
+                    else:
+                        self.plot_x_1.append(last)
+                        self.ax_1.set_xlim(0, self.total_saving_duration)
+                        self.plot_y_1.append(mean_temp)
+                        self.ax_1.plot(self.plot_x_1, self.plot_y_1)
+                        self.ax_1.set_xlabel('Temps [s]')
+                        self.ax_1.set_ylabel('Puissance (mW)')
+                        self.ax_1.grid(True)
+                        self.canvas_1.draw()
+                        self.pw_measurement_label.config(text=f"{mean_temp:.2f} mW")
 
-                        # recording enabled
+                        # current saving time < total saving duration
+                        if self.current_save_duration < self.total_saving_duration:
+                            self.current_save_duration += self.power_time_inc / 1000
+                            self.root.after(self.power_time_inc, lambda: self.update_loop())
+
+                        # current saving time >= total saving duration
                         else:
-                            self.plot_x_1.append(last)
-                            self.ax_1.set_xlim(0, self.total_saving_duration)
-                            self.plot_y_1.append(mean_temp)
-                            self.ax_1.plot(self.plot_x_1, self.plot_y_1)
-                            self.ax_1.set_xlabel('Temps [s]')
-                            self.ax_1.set_ylabel('Puissance (mW)')
-                            self.ax_1.grid(True)
-                            self.canvas_1.draw()
-                            self.pw_measurement_label.config(text=f"{mean_temp:.2f} mW")
+                            self.wavelengths_1 = self.plot_x_1
+                            self.power_values_1 = self.plot_y_1
+                            self.save_data(self.recording_path)
 
-                            # current saving time < total saving duration
-                            if self.current_save_duration < self.total_saving_duration:
-                                self.current_save_duration += self.power_time_inc / 1000
-                                self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
+                            print(" Fin de l'acquisition de données.")
+                            self.start_button.config(text="    Démarrer    ")
 
-                            # current saving time >= total saving duration
-                            else:
-                                self.wavelengths_1 = self.plot_x_1
-                                self.power_values_1 = self.plot_y_1
-                                self.save_data(self.recording_path)
+                            # enable buttons
+                            self.enable_buttons()
 
-                                print(" Fin de l'acquisition de données.")
-                                self.start_button.config(text="    Démarrer    ")
+                            self.cam_is_refreshing = False
+                            self.recording_enabled = False
+                            self.toggle_recording = False
+                            self.toggle_button.toggle()
+                            self.current_save_duration = 0
+                except Exception as e:
+                    print(f" Erreur lors de la prise de mesure: {e}.")
 
-                                # enable buttons
-                                self.enable_buttons()
+                    # recording disabled --> call the update_loop function again in real use mode
+                    if self.total_saving_duration is None:
+                        self.root.after(self.power_time_inc, lambda: self.update_loop())
 
-                                self.cam_is_refreshing = False
-                                self.recording_enabled = False
-                                self.toggle_recording = False
-                                self.toggle_button.toggle()
-                                self.current_save_duration = 0
-                    except Exception as e:
-                        print(f" Erreur lors de la prise de mesure: {e}.")
+                    # recording enabled
+                    else:
+                        # current saving time < total saving duration
+                        if self.current_save_duration < self.total_saving_duration:
+                            self.current_save_duration += self.power_time_inc / 1000
+                            self.root.after(self.power_time_inc, lambda: self.update_loop())
 
-                        # recording disabled --> call the update_loop function again in real use mode
-                        if self.total_saving_duration is None:
-                            self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
-
-                        # recording enabled
+                        # current saving time >= total saving duration
                         else:
-                            # current saving time < total saving duration
-                            if self.current_save_duration < self.total_saving_duration:
-                                self.current_save_duration += self.power_time_inc / 1000
-                                self.root.after(self.power_time_inc, lambda: self.update_loop(test=False))
+                            self.wavelengths_1 = self.plot_x_1
+                            self.power_values_1 = self.plot_y_1
+                            self.save_data(self.recording_path)
 
-                            # current saving time >= total saving duration
-                            else:
-                                self.wavelengths_1 = self.plot_x_1
-                                self.power_values_1 = self.plot_y_1
-                                self.save_data(self.recording_path)
+                            print(" Fin de l'acquisition de données.")
+                            self.start_button.config(text="    Démarrer    ")
 
-                                print(" Fin de l'acquisition de données.")
-                                self.start_button.config(text="    Démarrer    ")
+                            # enable buttons
+                            self.enable_buttons()
 
-                                # enable buttons
-                                self.enable_buttons()
-
-                                self.cam_is_refreshing = False
-                                self.recording_enabled = False
-                                self.toggle_recording = False
-                                self.toggle_button.toggle()
-                                self.current_save_duration = 0
-                # cam is disconnected
-                else:
-                    print(" Veuillez reconnecter le capteur.")
-                    self.cam_is_refreshing = False
-                    self.start_button.config(text="    Démarrer    ")
-
-            # test mode
+                            self.cam_is_refreshing = False
+                            self.recording_enabled = False
+                            self.toggle_recording = False
+                            self.toggle_button.toggle()
+                            self.current_save_duration = 0
+            # cam is disconnected
             else:
-                return
-
-
-
-
-
-
-
-    def update_cam(self):
-        """
-        updates the camera plot at 32Hz
-        """
-        # camera is connected
-        if self.pm.dev is not None:
-
-            # recording disabled
-            if self.total_saving_duration is None:
-
-                # process is started
-                if self.cam_is_refreshing:
-                    try:
-                        # update the position graph
-                        self.position_tuple = self.pm.get_position()    # ligne à changer pour avoir la position en forme de tuple
-                        self.display_position(self.position_tuple)
-
-                        # update position label
-                        self.pos_measurement_label.config(text=f"[{self.position_tuple[0]:.2f}:{self.position_tuple[1]:.2f}]")
-
-                        # update the position graph continuously
-                        self.root.after(self.power_time_inc, self.update_cam)
-                    except Exception as e:
-                        print(f" Erreur lors de la mise à jour de la caméra: {e}.")
-
-            # recording disabled
-            else:
-                # process is started
-                if self.cam_is_refreshing:
-                    try:
-                        # update the position graph
-                        self.position_tuple = self.pm.get_temp()    # ligne à changer pour avoir la position en forme de tuple
-                        self.display_position(self.position_tuple)
-
-                        # update position label
-                        self.pos_measurement_label.config(text=f"[{self.position_tuple[0]:.2f}:{self.position_tuple[1]:.2f}]")
-
-                        # update the position graph continuously
-                        self.root.after(self.power_time_inc, self.update_cam)
-                    except Exception as e:
-                        print(f" Erreur lors de l'enregistrement des données de la caméra: {e}.")
-
-        # camera is disconnected
-        else:
-            self.click_clear_2()
+                print(" Veuillez reconnecter le capteur.")
+                self.cam_is_refreshing = False
+                self.start_button.config(text="    Démarrer    ")
 
     def display_saving_time(self, event=None):
         """
@@ -672,7 +505,7 @@ class PowerMeterApp:
                 print(f" Le puissance-mètre est en mode < Acquisition de données >\n >> La durée d'enregistrement est de {self.total_saving_duration} secondes.")
                 self.total_saving_duration_entered = True
             except Exception:
-                print(f" Erreur lors de la définition de la durée d'enregistrement: la durée doit être un entier positif >:\\\n")
+                print(f" Erreur lors de la définition de la durée d'enregistrement: la durée doit être un entier positif >:\\")
                 self.total_saving_duration = None
                 self.total_saving_duration_entered = False
 
@@ -693,7 +526,7 @@ class PowerMeterApp:
                 print(f" >> La nouvelle durée d'enregistrement est de {self.total_saving_duration} secondes.")
                 self.total_saving_duration_entered = True
             except Exception:
-                print(f" Erreur lors de la définition de la durée d'enregistrement: la durée doit être un entier positif >:\\\n")
+                print(f" Erreur lors de la définition de la durée d'enregistrement: la durée doit être un entier positif >:\\")
                 self.total_saving_duration = None
                 self.total_saving_duration_entered = True
         else:
@@ -725,34 +558,6 @@ class PowerMeterApp:
             print(f" Données enregistrées à {save_path}")
         except Exception as e:
             print(f" Erreur durant la sauvegarde: {e}")
-
-    def save_cam_data(self):
-        """
-        saves the current frame of the camera to the saved_test_data folder
-        """
-        if self.pm.dev is not None:
-            try:
-                folder_path = filedialog.askdirectory(
-                    title="Choisir un dossier pour l'enregistrement"
-                )
-
-                if folder_path:  # Check if user selected a folder
-                    num_files = len([
-                        f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))
-                    ])
-                    # Create a proper filename
-                    filename = f"{time.strftime('%Y_%m_%d')}_{num_files}_camera_data.npy"
-                    save_path = os.path.join(folder_path, filename)
-
-                    # Save the camera data
-                    np.save(save_path, self.camera_data)
-                    print(f" Image enregistrée dans {save_path}")
-                else:
-                    print(" Aucun dossier sélectionné.")
-            except Exception as e:
-                print(f" Erreur lors de la sauvegarde de l'image: {e}.")
-        else:
-            print(" Il n'y a pas d'image à enregistrer !")
 
     def on_wavelength_selected(self, event=None):
         """
@@ -870,8 +675,7 @@ class PowerMeterApp:
         secret sauce
         """
         webbrowser.open("https://www.youtube.com/watch?v=xvFZjo5PgG0")
-
-        image_path = r"UI\secret_sauce.jpg"
+        image_path = r"main\secret_sauce.jpg"
         try:
             os.startfile(image_path)
         except Exception as e:

@@ -69,7 +69,7 @@ class PowerMeterApp:
         self.total_saving_duration = None    #  si c'est None, la durée d'enregistrement est illimitée
         self.current_save_duration = 0
         self.power_time_inc = 1000           # ms --> updates power and position graphs at 1Hz
-        self.pm_update_time_inc = 32         # ms
+        self.pm_update_time_inc = 31         # ms
 
         # save parameters
         self.recording_path = None
@@ -335,8 +335,7 @@ class PowerMeterApp:
             print(f" An error occurred: {e}")
         
         if self.cam_is_refreshing:
-            self.root.after(500, self.update_pm_data())
-            # self.root.after(self.pm_update_time_inc, self.update_pm_data())
+            self.root.after(self.pm_update_time_inc, self.update_pm_data())
 
     def toggle_recording(self, state):
         """
