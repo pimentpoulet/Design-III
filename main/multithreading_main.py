@@ -56,11 +56,7 @@ class PowerMeterThread(threading.Thread):
                 elif command == "get_position":
                     try:
                         result = self.pm.get_power_center()
-
                         print(f" result: {result}")
-                        # print(type(result[1][0]), type(float(result[1][0])))
-
-                        # print(isinstance(result, tuple), len(result))
 
                         # check that we got a tuple with at least 2 elements
                         if isinstance(result, tuple) and len(result) >= 2:
@@ -70,9 +66,6 @@ class PowerMeterThread(threading.Thread):
                             # check that pos is not None and has the expected format
                             if pos is not None and len(pos) == 2:
                                 x, y = pos[0], pos[1]
-
-                                # print(x, type(x), y, type(y))
-
                                 self.result_queue.put(("position_data", P, (x, y)))
                             else:
                                 self.result_queue.put(("position_data", None, "Invalid position format"))
@@ -178,8 +171,6 @@ class ThreadedPowerMeterApp(PowerMeterApp):
                     status_text = "Connecté" if self.cam_is_connected else "Déconnecté"
                     status_color = "green" if self.cam_is_connected else "red"
                     self.status_label.config(text=f"État: {status_text}", fg=status_color)
-                    
-                # return self.cam_is_connected
                     
             except Exception as e:
                 print(f" Erreur lors de la vérification de la connexion: {e}")
