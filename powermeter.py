@@ -54,15 +54,12 @@ class PowerMeter_nocam:
     def get_moy_temp(self, half = None) -> np.ndarray:
         if half is None:
             # Retourne la moyenne des températures dans le buffer
-            # return self.calibrate_temp(np.mean(self.temp_arrays, axis=0))
             return np.mean(self.temp_arrays, axis=0)
         elif half == 0:
             # Retourne la moyenne des températures dans la première moitié du buffer
-            # return self.calibrate_temp(np.mean(self.temp_arrays[:self.buffer_size//2, :, :], axis=0))
             return np.mean(self.temp_arrays[:self.buffer_size//2, :, :], axis=0)
         elif half == 1:
             # Retourne la moyenne des températures dans la seconde moitié du buffer
-            # return self.calibrate_temp(np.mean(self.temp_arrays[self.buffer_size//2:, :, :], axis=0))
             return np.mean(self.temp_arrays[self.buffer_size//2:, :, :], axis=0)
         else:
             raise ValueError("half must be 0 or 1")
@@ -88,31 +85,6 @@ class PowerMeter_nocam:
         # Applique un filtre gaussien
         filtered_temp = gaussian_filter(filtered_temp, sigma=1)
         return filtered_temp
-
-    # def calc_centroid(self) -> tuple:
-    #     temp = self.get_moy_temp()
-    #     moy_temp = np.mean(temp)
-    #     delta_temp = temp - moy_temp
-    #     total_temp = np.sum(delta_temp)
-
-    #     x_coords, y_coords = np.meshgrid(np.arange(self.cols), np.arange(self.rows))
-    #     x_centroid = np.sum(x_coords * delta_temp) / total_temp
-    #     y_centroid = np.sum(y_coords * delta_temp) / total_temp
-    #     return (x_centroid, y_centroid)
-
-    # def find_circle(self):
-    #     temp = self.get_moy_temp()
-    #     circles = cv2.HoughCircles(temp, cv2.HOUGH_GRADIENT, 1, 20, param1=50, param2=30, minRadius=2, maxRadius=16)
-    #     if circles is not None:
-    #         circles = np.uint16(np.around(circles))
-    #         return circles[0,0]
-    #     else:
-    #         return self.calc_centroid()
-
-    # def temp_gradient(self):
-    #     temp = self.get_moy_temp()
-    #     dx, dy = np.gradient(temp)
-    #     return dx, dy
 
     def find_max_temp_index(self):
         temp = self.get_moy_temp()
@@ -314,48 +286,3 @@ class PowerMeter(PowerMeter_nocam):
         # Enlève la plus vieille valeur et ajoute la nouvelle
         self.temp_arrays = np.roll(self.temp_arrays, 1, axis=0)
         self.temp_arrays[0,:,:] = temp_array
-    
-    # def get_power(self) -> float:
-    #     """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
-    #     try:
-    #         (params0, cov0), (params1, cov1) = self.get_gaussian_params(half=0), self.get_gaussian_params(half=1)
-    #     except Exception as e:
-    #         print(f"Erreur: Impossible de récupérer les paramètres de la gaussienne --> {e}.")
-    #         return None, None
-    #     thresh = 0.5
-    #     if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
-    #         print("Erreur: La covariance est trop élevée.")
-    #         return 0.0, 0.0
-    #     p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
-    #     p_diff0 = self.filter_time_series(p_diff0)
-    #     p_diff1 = self.filter_time_series(p_diff1)
-    #     refresh = self.dev._get_refresh_rate()
-    #     dt = self.buffer_size /2 / (2**(refresh-1))
-    #     diff = (p_diff1-p_diff0) / dt
-    #     P = (self.tau*diff + p_diff1)*self.gain+self.offset
-    #     return P, (params0, params1)
-    
-    # def get_power_sigmas(self) -> float:
-    #     """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
-    #     try:
-    #         (params0, cov0), (params1, cov1) = self.get_gaussian_params(half=0), self.get_gaussian_params(half=1)
-    #     except Exception as e:
-    #         print(f"Erreur: Impossible de récupérer les paramètres de la gaussienne --> {e}.")
-    #         return None, None
-    #     thresh = 0.5
-    #     if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
-    #         print("Erreur: La covariance est trop élevée.")
-    #         return 0.0, 0.0
-    #     p_aire0, p_aire1 = params0[1]*params0[3][0]*params0[3][1], params1[1]*params1[3][0]*params1[3][1]
-    #     refresh = self.dev._get_refresh_rate()
-    #     dt = self.buffer_size /2 / (2**(refresh-1))
-    #     P = (self.tau*(p_aire1-p_aire0) / dt + p_aire1+self.offset)*self.gain
-    #     return self.filter_time_series(P), (params0, params1)
-    
-    # def get_power_zones(self) -> float:
-    #     """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
-    #     diff_0, diff_1 = self.get_diff_temp(0), self.get_diff_temp(1)
-    #     refresh = self.dev._get_refresh_rate()
-    #     dt = self.buffer_size /2 / (2**(refresh-1))
-    #     P = (self.tau*(diff_1-diff_0) / dt + diff_1+self.offset)*self.gain
-    #     return self.filter_time_series(P), self.find_max_temp_index()
