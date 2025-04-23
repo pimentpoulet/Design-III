@@ -167,7 +167,7 @@ def afficher_integration():
 
 
 def afficher_3D_temp():
-    temps = np.load("test_data/test_973nm_aligne_0W-5W_step5W_temps_pow.npy")
+    temps = np.load("test_data_aligne2/test_450_0W-5W_step5W_temps_pow.npy")
     pm = PowerMeter_nocam(0.05, 10, buffer_size=64)
     for i in range(temps.shape[0]):
         pm.update_temperature(pm.get_temp(temps, i))
@@ -231,19 +231,19 @@ def afficher_puissance_serie_t():
     
 
 def afficher_power():
-    temps = np.load("test_data/test_973nm_0W-20W_step2.5W_temps_pow.npy")
-    pm = PowerMeter_nocam(gain=0.2, tau=0.3, offset=6)
+    temps = np.load("test_data_aligne2/test_976_0W-20W_step2.5W_temps_pow.npy")
+    pm = PowerMeter_nocam(gain=1, tau=0, offset=0)
     power_series = []
     for i in range(temps.shape[0]):
         pm.update_temperature(pm.get_temp(temps, i))
         if i % 32 == 0 and i != 0:
             try:
-                # power, center = pm.get_power()
+                power, center = pm.get_power()
                 # power, center = pm.get_power_sigmas()
                 # power, center = pm.get_power_center()
-                power, center = pm.get_power_zones()
+                # power, center = pm.get_power_zones()
                 power_series.append(power)
-                print(center)
+                # print(center)
             except Exception as e:
                 print(f"Erreur: {e}")
                 # # print(pm.get_moy_temp())
@@ -256,8 +256,8 @@ def afficher_power():
     
 
 def afficher_wv():
-    temps = np.load("test_data/test_450nm_aligne_0W-5W_step5W_temps_pow.npy")
-    pm = PowerMeter_nocam(gain=0.2, tau=0.3, offset=6)
+    temps = np.load("test_data_aligne2/test_450_0W-5W_step5W_temps_pow.npy")
+    pm = PowerMeter_nocam(gain=0.2, tau=0.3, offset=6, buffer_size=32)
     wv_series = []
     for i in range(temps.shape[0]):
         pm.update_temperature(pm.get_temp(temps, i))
@@ -265,7 +265,8 @@ def afficher_wv():
             try:
                 wv = pm.get_wavelength()
                 # power, center = pm.get_power_sigmas()
-                wv_series.append(wv)
+                if -2< wv <2:
+                    wv_series.append(wv)
                 # print(center)
             except Exception as e:
                 print(f"Erreur: {e}")

@@ -1,8 +1,8 @@
 import numpy as np
 import cv2
 
-from mlx90640_evb9064x import *
-from mlx90640 import *
+# from mlx90640_evb9064x import *
+# from mlx90640 import *
 from scipy.optimize import curve_fit
 from scipy.ndimage import gaussian_filter, median_filter, uniform_filter
 from scipy.signal import savgol_filter
@@ -46,7 +46,6 @@ class PowerMeter_nocam:
         self.time_series_array[0] = time_series
 
     def filter_time_series(self, time_series: None) -> float:
-        print(time_series)
         if time_series is not None:
             self.update_time_series(time_series)
         return savgol_filter(self.time_series_array, 15, 4, mode='nearest')[-1]
@@ -78,7 +77,7 @@ class PowerMeter_nocam:
     def filter_temp(self, temp_array: np.ndarray) -> np.ndarray:
         # Enlève les pixels aberrants et le bruit plus fin
         # filtered_temp = np.copy(temp_array)
-        filtered_temp = median_filter(np.copy(temp_array), size=3)
+        filtered_temp = median_filter(np.copy(temp_array), size=5)
 
         # mean_local = uniform_filter(filtered_temp, size=3)
         # diff = filtered_temp - mean_local
@@ -161,6 +160,7 @@ class PowerMeter_nocam:
         odd_even (None toute la plaque, 0 plaque dessus et 1 plaque dessous) et pour la moitié du buffer 
         choisie (half: 0 ou 1) ou l'ensemble du buffer (half: None)."""
         temp = self.get_moy_temp(half)
+        temp = self.filter_temp(temp)
         # temp = self.filter_temp(self.get_moy_temp(half))
         if odd_even is None:
             grid = temp
@@ -180,9 +180,7 @@ class PowerMeter_nocam:
         X, Y = np.ogrid[:ny, :nx]
 
         distance = np.sqrt((X - x0)**2 + (Y - y0)**2)
-        print("ah")
         mask = (distance >= rayon - largeur / 2) & (distance <= rayon + largeur / 2)
-        print("oh")
         return mask
     
     def get_diff_temp(self, half: int = 0) -> float:
@@ -194,6 +192,14 @@ class PowerMeter_nocam:
         temp_min = np.mean(temp[mask])
         return temp_max - temp_min
     
+    def get_power_zones(self) -> float:
+        """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
+        diff_0, diff_1 = self.get_diff_temp(0), self.get_diff_temp(1)
+        refresh = 6
+        dt = self.buffer_size /2 / (2**(refresh-1))
+        P = (self.tau*(diff_1-diff_0) / dt + diff_1+self.offset)*self.gain
+        return self.filter_time_series(P)
+    
     def get_power(self) -> float:
         """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
         try:
@@ -201,20 +207,34 @@ class PowerMeter_nocam:
         except Exception as e:
             print(f"Erreur: Impossible de récupérer les paramètres de la gaussienne --> {e}.")
             return None, None
-        thresh = 0.5
+        thresh = 0.1
         if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
-            print("Erreur: La covariance est trop élevée.")
+            # return self.time_series_array[-1]
             return 0.0, 0.0
-        p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
-        p_diff0 = self.filter_time_series(p_diff0)
-        p_diff1 = self.filter_time_series(p_diff1)
+        ratio0, ratio1 = params0[1]/abs(params0[3][0]), params1[1]/abs(params1[3][0])
+        # ratio0 = self.filter_time_series(ratio0)
+        # ratio1 = self.filter_time_series(ratio1)
+        
+        largeur = abs(params0[3][0]+params1[3][0])
         refresh = 6
         dt = self.buffer_size /2 / (2**(refresh-1))
-        diff = (p_diff1-p_diff0) / dt
-        # if not -2 < diff < 2:
-        #     return 0.0, 0.0
-        P = (self.tau*diff + p_diff1)*self.gain+self.offset
-        return P, (params0, params1)
+        
+        # P = (ratio0+ratio1)/2*self.gain+self.offset
+        P = (self.tau*(ratio0-ratio1)/dt + ratio1)*self.gain+self.offset
+        # self.update_time_series((P, (params0, params1)))
+        if abs(largeur) > 1:
+            # return np.mean(self.time_series_array[-5:]), (params0, params1)
+            return P, (params0, params1)
+
+        # p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
+        # p_diff0 = self.filter_time_series(p_diff0)
+        # p_diff1 = self.filter_time_series(p_diff1)
+        # refresh = 6
+        # dt = self.buffer_size /2 / (2**(refresh-1))
+        # diff = (p_diff1-p_diff0) / dt
+        # P = (self.tau*diff + p_diff1)*self.gain+self.offset
+        # return P, (params0, params1)
+            
     
     def get_power_sigmas(self) -> float:
         """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
@@ -232,14 +252,6 @@ class PowerMeter_nocam:
         dt = self.buffer_size /2 / (2**(refresh-1))
         P = (self.tau*(p_aire1-p_aire0) / dt + p_aire1+self.offset)*self.gain
         return self.filter_time_series(P), (params0, params1)
-    
-    def get_power_zones(self) -> float:
-        """ Retourne la puissance en fonction des paramètres de la gaussienne 2D pour une plaque."""
-        diff_0, diff_1 = self.get_diff_temp(0), self.get_diff_temp(1)
-        refresh = 6
-        dt = self.buffer_size /2 / (2**(refresh-1))
-        P = (self.tau*(diff_1-diff_0) / dt + diff_1+self.offset)*self.gain
-        return self.filter_time_series(P), self.find_max_temp_index()
         
     def get_center(self, params0: tuple, params1: tuple) -> tuple:
         """ Retourne le centre de la gaussienne 2D pour deux cadrillés différents."""
@@ -257,12 +269,12 @@ class PowerMeter_nocam:
     def get_wavelength(self) -> float:
         """ Retourne la longueur d'onde en fonction des paramètres de la gaussienne 2D."""
         (params0, cov0), (params1, cov1) = self.get_gaussian_params(odd_even=0), self.get_gaussian_params(odd_even=1)
-        thresh = 0.5
+        thresh = 1
         if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
             print("Erreur: La covariance est trop élevée.")
             return 0.0
         p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
-        ratio = p_diff0/p_diff1
+        ratio = p_diff0/(p_diff1*(params0[3][0]**2+params1[3][0]**2)/2)
         return ratio
         
         
