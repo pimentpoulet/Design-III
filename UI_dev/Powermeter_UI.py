@@ -69,7 +69,7 @@ class PowerMeterApp:
         self.total_saving_duration = None    #  si c'est None, la durée d'enregistrement est illimitée
         self.current_save_duration = 0
         self.power_time_inc = 1000           # ms --> updates power and position graphs at 1Hz
-        self.pm_update_time_inc = 31         # ms
+        self.pm_update_time_inc = 500        # ms
 
         # save parameters
         self.recording_path = None

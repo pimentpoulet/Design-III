@@ -1,7 +1,6 @@
 import tkinter as tk
 import threading
 import queue
-import time
 import numpy as np
 import serial
 
@@ -13,12 +12,12 @@ class PowerMeterThread(threading.Thread):
     """
     Worker thread that handles PowerMeter operations
     """
-    def __init__(self, command_queue, result_queue):
+    def __init__(self, command_queue, result_queue, pm):
         threading.Thread.__init__(self, daemon=True)
         self.command_queue = command_queue    # Queue for receiving commands from UI
         self.result_queue = result_queue      # Queue for sending results back to UI
         self.running = False
-        self.pm = None
+        self.pm = pm
 
     def run(self):
         """
@@ -28,7 +27,7 @@ class PowerMeterThread(threading.Thread):
 
         # Initialize PowerMeter instance
         try:
-            self.pm = PowerMeter()
+            # self.pm = PowerMeter()
             self.result_queue.put(("init_status", True))
         except Exception as e:
             self.result_queue.put(("init_status", False, str(e)))
@@ -65,14 +64,23 @@ class PowerMeterThread(threading.Thread):
                 elif command == "get_position":
                     try:
                         result = self.pm.get_power_center()
-                        
+
+                        # print(f" result: {result}")
+                        # print(type(result[1][0]), type(float(result[1][0])))
+
+                        # print(isinstance(result, tuple), len(result))
+
                         # Check that we got a tuple with at least 2 elements
-                        if isinstance(result, tuple) and len(result) > 2:
+                        if isinstance(result, tuple) and len(result) >= 2:
                             P, pos = result
+                            # print(f" pos: {pos}")
 
                             # Check that pos is not None and has the expected format
                             if pos is not None and len(pos) == 2:
                                 x, y = pos[0], pos[1]
+
+                                # print(x, type(x), y, type(y))
+
                                 self.result_queue.put(("position_data", (x, y)))
                             else:
                                 self.result_queue.put(("position_data", None, "Invalid position format"))
@@ -145,9 +153,6 @@ class ThreadedPowerMeterApp(PowerMeterApp):
         if self.start_button.cget("text") == "    Démarrer    " or self.start_button.cget("text") == "     Démarrer l'enregistrement      ":
             self.check_connection()
 
-        print(f" self.cam_is_connected: {self.cam_is_connected}")
-        print(f" self.pm: {self.pm}")
-
         # camera is connected
         if self.cam_is_connected:
 
@@ -204,6 +209,9 @@ class ThreadedPowerMeterApp(PowerMeterApp):
                     self.current_save_duration = 0
                 self.start_button.config(text="    Démarrer    ")
 
+                # set connection flag
+                self.cam_is_connected = False
+
         # camera is disconnected
         else:
             print(" Veuillez connecter / reconnecter le capteur.")
@@ -220,11 +228,11 @@ class ThreadedPowerMeterApp(PowerMeterApp):
                 self.result_queue = queue.Queue()
 
             # Start the worker thread
-            self.worker_thread = PowerMeterThread(self.command_queue, self.result_queue)
+            self.worker_thread = PowerMeterThread(self.command_queue, self.result_queue, self.pm)
             self.worker_thread.start()
             return True
         else:
-            print(f" Thread d'acquisition déjà en cours d'exécution.")
+            # print(f" Thread d'acquisition déjà en cours d'exécution.")
             return False
 
     def kill_acquisition_thread(self):
@@ -245,7 +253,8 @@ class ThreadedPowerMeterApp(PowerMeterApp):
                         self.worker_thread.cleanup()
                     print(f" Le thread ne répond pas, arrêt forcé.")
                 else:
-                    print(f" Thread d'acquisition arrêté avec succès.")
+                    # print(f" Thread d'acquisition arrêté avec succès.")
+                    pass
 
                 self.worker_thread = None
                 return True
@@ -303,6 +312,7 @@ class ThreadedPowerMeterApp(PowerMeterApp):
         Modified update_cam that uses the worker thread
         """
         if self.cam_is_refreshing:
+
             # Request position data from worker thread
             self.command_queue.put(("get_position", None))
             
@@ -333,7 +343,6 @@ class ThreadedPowerMeterApp(PowerMeterApp):
                     pass
                     
                 elif result_type == "temp_data":
-                    print(f"result: {result}")
                     if len(result) > 2:  # Error occurred
                         print(f" Erreur lors du calcul de température: {result[2]}")
                     else:
@@ -346,7 +355,7 @@ class ThreadedPowerMeterApp(PowerMeterApp):
                     if len(result) > 2:    # Error occurred
                         print(f" Erreur lors du calcul de position: {result[2]}")
                     else:
-                        position = result[1]
+                        _, position = result
 
                         self.position_tuple = position
                         self.display_position(position)

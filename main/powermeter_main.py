@@ -162,7 +162,7 @@ class PowerMeter_nocam:
             return None, None
         thresh = 0.5
         if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
-            print(" Erreur: La covariance est trop élevée.")
+            # print(" Erreur: La covariance est trop élevée.")
             return 0.0, 0.0
         p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
         p_diff0 = self.filter_time_series(p_diff0)
@@ -182,7 +182,7 @@ class PowerMeter_nocam:
             return None, None
         thresh = 0.5
         if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
-            print(" Erreur: La covariance est trop élevée.")
+            # print(" Erreur: La covariance est trop élevée.")
             return 0.0, 0.0
         p_aire0, p_aire1 = params0[1]*params0[3][0]*params0[3][1], params1[1]*params1[3][0]*params1[3][1]
         refresh = 6
@@ -220,7 +220,7 @@ class PowerMeter_nocam:
         (params0, cov0), (params1, cov1) = self.get_gaussian_params(odd_even=0), self.get_gaussian_params(odd_even=1)
         thresh = 0.5
         if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
-            print(" Erreur: La covariance est trop élevée.")
+            # print(" Erreur: La covariance est trop élevée.")
             return 0.0
         p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
         ratio = p_diff0/p_diff1
@@ -240,15 +240,12 @@ class PowerMeter(PowerMeter_nocam):
             self.dev.dump_eeprom()
             self.dev.extract_parameters()
             self.camera_available = True
-            print(f" self.camera_available: {self.camera_available}")
 
         except Exception as e:
-            print(self.dev)
             self.dev = None
             print(f" Erreur: Initialisation de la caméra impossible --> {e}.")
 
     def get_temp(self) -> np.ndarray:
-        print(self.dev)
         self.dev.get_frame_data()
         temp_amb = self.dev.get_ta() # Compensation de la température ambiante
         emissivity = 1.0
