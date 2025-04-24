@@ -229,7 +229,7 @@ class PowerMeterApp:
         self.fig_1, self.ax_1 = plt.subplots(figsize=(10, 5))
         self.canvas_1 = FigureCanvasTkAgg(self.fig_1, master=self.graph_frame)
         self.ax_1.set_xlabel("Temps [s]")
-        self.ax_1.set_ylabel("Puissance [mW]")
+        self.ax_1.set_ylabel("Puissance [W]")
         self.ax_1.set_ylim(-1, 12)
         self.ax_1.grid(True)
 
@@ -454,7 +454,7 @@ class PowerMeterApp:
         try:
             with open(save_path, mode="w", newline="") as file:
                 writer = csv.writer(file)
-                writer.writerow(["Time [s]", "Power [mW]"])
+                writer.writerow(["Time [s]", "Power [W]"])
                 for time, pw in zip(self.wavelengths_1, self.power_values_1):
                     writer.writerow([time, pw])
             print(f" Données enregistrées à {save_path}")
@@ -528,7 +528,7 @@ class PowerMeterApp:
             self.ax_1.set_xlim(0, self.total_saving_duration)
 
         self.ax_1.set_xlabel('Time')
-        self.ax_1.set_ylabel('Power (mW)')
+        self.ax_1.set_ylabel('Power (W)')
         self.ax_1.grid(True)
         self.canvas_1.draw()
 

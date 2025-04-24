@@ -430,12 +430,12 @@ class ThreadedPowerMeterApp(PowerMeterApp):
             self.ax_1.set_xlim(0, self.total_saving_duration)
         self.ax_1.plot(self.plot_x_1, self.plot_y_1)
         self.ax_1.set_xlabel('Temps [s]')
-        self.ax_1.set_ylabel('Puissance (mW)')
+        self.ax_1.set_ylabel('Puissance (W)')
         self.ax_1.grid(True)
         self.canvas_1.draw()
         
         # update power measurement label
-        self.pw_measurement_label.config(text=f"{power:.2f} mW")
+        self.pw_measurement_label.config(text=f"{power:.2f}")
     
     def on_closing(self):
         """
