@@ -330,8 +330,8 @@ if __name__ == "__main__":
     # afficher_integration()
     # afficher_3D_temp()
     # afficher_puissance_serie_t()
-    # afficher_power()
-    afficher_wv()
+    afficher_power()
+    # afficher_wv()
     # affiche_graphique(np.load("wv_6.npy"),
     #                   np.load("Ratios_2_6.npy"),
     #                   "Longueur d'onde (nm)",
