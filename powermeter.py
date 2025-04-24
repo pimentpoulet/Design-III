@@ -1,7 +1,7 @@
 import numpy as np
 
-# from mlx90640_evb9064x import *
-# from mlx90640 import *
+from mlx90640_evb9064x import *
+from mlx90640 import *
 from scipy.optimize import curve_fit
 from scipy.ndimage import gaussian_filter, median_filter
 from random import gauss
