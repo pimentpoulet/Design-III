@@ -230,7 +230,9 @@ class PowerMeter_nocam:
     def get_center(self, params0: tuple, params1: tuple) -> tuple:
         """ Retourne le centre de la gaussienne 2D pour deux cadrillés différents."""
         c_0, c_1 = params0[0], params1[0]
-        return ((c_0[0] + c_1[0]) / 2)-11.5, ((c_0[1] + c_1[1]) / 2)-15.5
+        x = ((c_0[0] + c_1[0]) / 2)-11.5
+        y = ((c_0[1] + c_1[1]) / 2)-15.5
+        return (x*0.99787+y*0.065245)*0.9071, (x*-0.065245+y*0.99787)*0.9071
         
     def get_power_center(self) -> tuple:
         P, params = self.get_power()
