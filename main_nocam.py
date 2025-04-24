@@ -5,6 +5,7 @@ import time
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter, median_filter
+from matplotlib.widgets import Slider
 
 
 def time_delay(func):
@@ -30,9 +31,25 @@ def main_nocam():
                 # print(pm.get_moy_temp())
                 continue
 
+def plateau(x, li, value):
+    for i in range(len(x)//9):
+        li.append(value)
+    return li
 
 def affiche_graphique(x, y, xlabel, ylabel):
+    power = plateau(x, [], 0)
+    power = plateau(x, power, 2.42)
+    power = plateau(x, power, 5.02)
+    power = plateau(x, power, 7.6)
+    power = plateau(x, power, 10.1)
+    power = plateau(x, power, 7.6)
+    power = plateau(x, power, 5.02)
+    power = plateau(x, power, 2.42)
+    power = plateau(x, power, 0)
+    diff = len(x)-len(power)
+    power = power+[0]*diff
     plt.plot(x, y, linewidth=4)
+    plt.plot(x, power, linewidth=2, color='red')
     # plt.title(titre, fontsize=16)
     plt.xlabel(xlabel, fontsize=28)
     plt.ylabel(ylabel, fontsize=28)
@@ -167,14 +184,14 @@ def afficher_integration():
 
 
 def afficher_3D_temp():
-    temps = np.load("test_data_aligne2/test_450_0W-5W_step5W_temps_pow.npy")
+    temps = np.load("test_data_ref/test_973_0W-20W_step2.5W_temps_pow.npy")
     pm = PowerMeter_nocam(0.05, 10, buffer_size=64)
     for i in range(temps.shape[0]):
         pm.update_temperature(pm.get_temp(temps, i))
         if i % 64 == 0 and i != 0:
             try:
-                frame = pm.get_moy_temp()
-                # frame = pm.calibrate_temp(pm.get_moy_temp())
+                # frame = pm.get_moy_temp()
+                frame = pm.calibrate_temp(pm.get_moy_temp())
                 x = np.arange(frame.shape[1])
                 y = np.arange(frame.shape[0])
                 X, Y = np.meshgrid(x, y)
@@ -193,7 +210,7 @@ def afficher_3D_temp():
 
 
 def afficher_puissance_serie_t():
-    temps = np.load("test_data/test_973nm_0W-20W_step2.5W_temps_pow.npy")
+    temps = np.load("test_data_ref/test_973_0W-20W_step2.5W_temps_pow.npy")
     pm = PowerMeter_nocam(0.05, 10, buffer_size=32)
     diff_series = []
     min_series = []
@@ -231,23 +248,34 @@ def afficher_puissance_serie_t():
     
 
 def afficher_power():
-    temps = np.load("test_data_aligne2/test_976_0W-20W_step2.5W_temps_pow.npy")
-    pm = PowerMeter_nocam(gain=1, tau=0, offset=3)
+    temps = np.load("test_data_ref/test_973_0W-20W_step2.5W_temps_pow.npy")
+    pm = PowerMeter_nocam(gain=1.15, tau=0.8, offset=3, integ=0.5, time_series=5, buffer_size=32)
     power_series = []
     for i in range(temps.shape[0]):
         pm.update_temperature(pm.get_temp(temps, i))
         if i % 32 == 0 and i != 0:
             try:
-                power, center = pm.get_power()
+                power, params = pm.get_power()
                 # power, center = pm.get_power_sigmas()
                 # power, center = pm.get_power_center()
                 # power, center = pm.get_power_zones()
-                power_series.append(power)
+                if power is None:
+                    power_series.append(0.0)
+                if 0.1 < power < 5:
+                    power_series.append(power*0.57)
+                elif 5 < power < 7.5:
+                    power_series.append(power*0.85)
+                elif 7.5 < power < 9.5:
+                    power_series.append(power*0.96)
+                else:
+                    power_series.append(power)
+                # power_series.append(power)
                 # print(center)
             except Exception as e:
                 print(f"Erreur: {e}")
                 # # print(pm.get_moy_temp())
                 continue
+    print(len(power_series))
     affiche_graphique(np.arange(len(power_series)),
                        power_series,
                        "Temps (s)",
@@ -279,8 +307,6 @@ def afficher_wv():
                      )
 
 
-
-
 if __name__ == "__main__":
     # main_nocam()
 
@@ -293,3 +319,4 @@ if __name__ == "__main__":
     # afficher_puissance_serie_t()
     afficher_power()
     # afficher_wv()
+    # ajuster_parametres_interactifs()

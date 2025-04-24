@@ -171,3 +171,4 @@ cython_debug/
 .pypirc
 test_data
 test_data_aligne2
+test_data_ref
