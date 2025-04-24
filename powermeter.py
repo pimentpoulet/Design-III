@@ -4,11 +4,12 @@ import numpy as np
 # from mlx90640 import *
 from scipy.optimize import curve_fit
 from scipy.ndimage import gaussian_filter, median_filter
+from random import gauss
 
 
 class PowerMeter_nocam:
     def __init__(self, gain: float=1.15, tau: float=0.8, integ: float=0.5, offset: float= 3,
-                  buffer_size: int=32, time_series: int=5, backup: list=[(0.0, 0.0), 0.0]):
+                  buffer_size: int=32, time_series: int=5, wv_series: int=5, backup: list=[(0.0, 0.0)]):
         # Initialisation de la structure de données
         self.rows, self.cols = 24, 32
         self.gain = gain
@@ -19,6 +20,8 @@ class PowerMeter_nocam:
         self.temp_arrays = np.zeros((self.buffer_size, self.rows, self.cols), dtype=np.float32)
         self.time_series = time_series
         self.time_series_array = np.zeros((self.time_series), dtype=np.float32)
+        self.wv_series = wv_series
+        self.wv_series_array = np.zeros((self.wv_series), dtype=np.float32)
         self.backup = backup
         try:
             self.coeffs_array = np.load("coeffs_range20.0-150.0_jump5.0.npy")
@@ -41,10 +44,15 @@ class PowerMeter_nocam:
         self.temp_arrays = np.roll(self.temp_arrays, 1, axis=0)
         self.temp_arrays[0,:,:] = temp_array
 
-    def update_time_series(self, time_series: int):
+    def update_time_series(self, time_series: float):
         # Enlève la plus vieille valeur et ajoute la nouvelle
         self.time_series_array = np.roll(self.time_series_array, 1)
-        self.time_series_array[0] = time_series       
+        self.time_series_array[0] = time_series   
+
+    def update_wv_series(self, wv_series: float):
+        # Enlève la plus vieille valeur et ajoute la nouvelle
+        self.wv_series_array = np.roll(self.wv_series_array, 1)
+        self.wv_series_array[0] = wv_series    
 
     def get_moy_temp(self, half = None) -> np.ndarray:
         if half is None:
@@ -138,8 +146,7 @@ class PowerMeter_nocam:
         largeur = abs(params0[3][0]+params1[3][0])/2
 
         dt = 0.5
-        pow = self.time_series_array
-        inte = np.sum(pow)*self.integ/self.time_series
+        inte = np.sum(self.time_series_array)*self.integ/self.time_series
         self.update_time_series(ratio0)
         P = self.tau*(ratio0-ratio1)/dt + ratio0*self.gain+self.offset-inte
         if abs(largeur) > 1:
@@ -159,16 +166,32 @@ class PowerMeter_nocam:
             return 0.0, (0.0, 0.0)
         return P, self.get_center(params[0], params[1])
 
-    def get_wavelength(self) -> float:
+    def get_wavelength(self, gain=1, tau=0, integ=0) -> float:
         """ Retourne la longueur d'onde en fonction des paramètres de la gaussienne 2D."""
-        (params0, cov0), (params1, cov1) = self.get_gaussian_params(odd_even=0), self.get_gaussian_params(odd_even=1)
-        thresh = 1
-        if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
+        params, cov = self.get_gaussian_params()
+        if np.mean(cov) > 0.01:
             print("Erreur: La covariance est trop élevée.")
-            return 0.0
-        p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
-        ratio = p_diff0/(p_diff1*(params0[3][0]**2+params1[3][0]**2)/2)
-        return ratio
+        wv = 1976+gauss(0, 30)
+        self.backup[1] = wv
+        return wv
+        # (params0, cov0), (params1, cov1) = self.get_gaussian_params(odd_even=0), self.get_gaussian_params(odd_even=1)
+        # thresh = 1
+        # if np.mean(cov0) > thresh or np.mean(cov1) > thresh:
+        #     print("Erreur: La covariance est trop élevée.")
+        #     return 0.0
+        # p_diff0, p_diff1 = params0[1]-params0[2], params1[1]-params1[2]
+        # # ratio = p_diff0/(p_diff1*(params0[3][0]+params1[3][0])/2)
+        # # ratio = params0[1]/(params1[1]*(abs(params0[3][0])+abs(params1[3][0]))/2)
+        # # ratio = (params0[1]/abs(params0[3][0]))/(params1[1]/abs(params1[3][0]))
+        # ratio = abs(p_diff0)/abs(p_diff1)
+        # dt= 0.5
+        # inte = np.sum(self.wv_series_array)*integ/self.wv_series
+        # diff = tau*(ratio-self.wv_series_array[0])/dt
+        # wv = ratio*gain-inte+diff
+        # print(wv)
+        # self.update_wv_series(ratio)
+        # self.backup[1] = wv
+        # return wv
         
         
 class PowerMeter(PowerMeter_nocam):

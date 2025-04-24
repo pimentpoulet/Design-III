@@ -37,15 +37,15 @@ def plateau(x, li, value):
     return li
 
 def affiche_graphique(x, y, xlabel, ylabel):
-    power = plateau(x, [], 0)
-    power = plateau(x, power, 2.42)
-    power = plateau(x, power, 5.02)
-    power = plateau(x, power, 7.6)
-    power = plateau(x, power, 10.1)
-    power = plateau(x, power, 7.6)
-    power = plateau(x, power, 5.02)
-    power = plateau(x, power, 2.42)
-    power = plateau(x, power, 0)
+    # power = plateau(x, [], 0)
+    # power = plateau(x, power, 2.42)
+    # power = plateau(x, power, 5.02)
+    # power = plateau(x, power, 7.6)
+    # power = plateau(x, power, 10.1)
+    # power = plateau(x, power, 7.6)
+    # power = plateau(x, power, 5.02)
+    # power = plateau(x, power, 2.42)
+    # power = plateau(x, power, 0)
     # power = plateau(x, [], 0)
     # power = plateau(x, power, 4.25)
     # power = plateau(x, power, 5.9)
@@ -55,10 +55,10 @@ def affiche_graphique(x, y, xlabel, ylabel):
     # power = plateau(x, power, 5.9)
     # power = plateau(x, power, 4.25)
     # power = plateau(x, power, 0)
-    diff = len(x)-len(power)
-    power = power+[0]*diff
+    # diff = len(x)-len(power)
+    # power = power+[0]*diff
     plt.plot(x, y, linewidth=4)
-    plt.plot(x, power, linewidth=2, color='red')
+    # plt.plot(x, power, linewidth=2, color='red')
     # plt.title(titre, fontsize=16)
     plt.xlabel(xlabel, fontsize=28)
     plt.ylabel(ylabel, fontsize=28)
@@ -294,21 +294,24 @@ def afficher_power():
     
 
 def afficher_wv():
-    temps = np.load("test_data_aligne2/test_450_0W-5W_step5W_temps_pow.npy")
-    pm = PowerMeter_nocam(gain=0.2, tau=0.3, offset=6, buffer_size=32)
+    # temps = np.load("test_data_ref/test_450_0W-5W_step5W_temps_pow.npy")
+
+    temps = np.load("test_data_ref/test_973_0W-20W_step2.5W_temps_pow.npy")
+    pm = PowerMeter_nocam(wv_series=20)
     wv_series = []
     for i in range(temps.shape[0]):
         pm.update_temperature(pm.get_temp(temps, i))
         if i % 32 == 0 and i != 0:
             try:
-                wv = pm.get_wavelength()
+                wv = pm.get_wavelength(gain=1, integ=0, tau=0)
                 # power, center = pm.get_power_sigmas()
-                if -2< wv <2:
-                    wv_series.append(wv)
+                # if abs(wv) <2:
+                wv_series.append(wv)
                 # print(center)
             except Exception as e:
                 print(f"Erreur: {e}")
                 # print(pm.get_moy_temp())
+                wv_series.append(0.0)
                 continue
     affiche_graphique(np.arange(len(wv_series)),
                        wv_series,
@@ -327,6 +330,9 @@ if __name__ == "__main__":
     # afficher_integration()
     # afficher_3D_temp()
     # afficher_puissance_serie_t()
-    afficher_power()
-    # afficher_wv()
-    # ajuster_parametres_interactifs()
+    # afficher_power()
+    afficher_wv()
+    # affiche_graphique(np.load("wv_6.npy"),
+    #                   np.load("Ratios_2_6.npy"),
+    #                   "Longueur d'onde (nm)",
+    #                     "Ratio")
