@@ -53,7 +53,7 @@ class PowerMeterApp:
         self.power_values_1 = None
         self.wavelengths_2 = None
         self.power_values_2 = None
-        self.position_tuple = (0, 0)
+        self.position_list = []
         self.last_selected_wavelength = ""
         self.current_values = [450, 976, 1976]
 
@@ -341,6 +341,7 @@ class PowerMeterApp:
                 if not self.recording_path:
                     self.toggle_button.set_state(False)
                     self.recording_enabled = False
+                    self.position_list = []
                     print(" Enregistrement annulé - Aucun chemin spécifié.")
                     return
                 else:
@@ -364,6 +365,7 @@ class PowerMeterApp:
             self.test_duration_entry.grid_forget()
             if hasattr(self, 'recording_path'):
                 delattr(self, 'recording_path')
+            self.position_list = []
 
     def disable_buttons(self):
         """
@@ -454,9 +456,9 @@ class PowerMeterApp:
         try:
             with open(save_path, mode="w", newline="") as file:
                 writer = csv.writer(file)
-                writer.writerow(["Time [s]", "Power [W]"])
-                for time, pw in zip(self.wavelengths_1, self.power_values_1):
-                    writer.writerow([time, pw])
+                writer.writerow(["Time [s]", "Power [W]", "Position [mm:mm]"])
+                for time, pw, pos in zip(self.wavelengths_1, self.power_values_1, self.position_list):
+                    writer.writerow([time, pw, pos])
             print(f" Données enregistrées à {save_path}")
         except Exception as e:
             print(f" Erreur durant la sauvegarde: {e}")

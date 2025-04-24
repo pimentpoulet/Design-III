@@ -56,7 +56,7 @@ class PowerMeterThread(threading.Thread):
                 elif command == "get_position":
                     try:
                         result = self.pm.get_power_center()
-                        print(f" result: {result}")
+                        # print(f" result: {result}")
 
                         # check that we got a tuple with at least 2 elements
                         if isinstance(result, tuple) and len(result) >= 2:
@@ -399,6 +399,9 @@ class ThreadedPowerMeterApp(PowerMeterApp):
                             print(f" Erreur lors du calcul de position: {result[2]}")
                         else:
                             _, P, position = result
+
+                            if self.recording_enabled:
+                                self.position_list.append(position)
 
                             self.position_tuple = position
                             self.display_position(position)
