@@ -46,6 +46,15 @@ def affiche_graphique(x, y, xlabel, ylabel):
     power = plateau(x, power, 5.02)
     power = plateau(x, power, 2.42)
     power = plateau(x, power, 0)
+    # power = plateau(x, [], 0)
+    # power = plateau(x, power, 4.25)
+    # power = plateau(x, power, 5.9)
+    # power = plateau(x, power, 7.9)
+    # power = plateau(x, power, 10.1)
+    # power = plateau(x, power, 7.9)
+    # power = plateau(x, power, 5.9)
+    # power = plateau(x, power, 4.25)
+    # power = plateau(x, power, 0)
     diff = len(x)-len(power)
     power = power+[0]*diff
     plt.plot(x, y, linewidth=4)
@@ -260,17 +269,17 @@ def afficher_power():
                 # power, center = pm.get_power_sigmas()
                 # power, center = pm.get_power_center()
                 # power, center = pm.get_power_zones()
-                if power is None:
-                    power_series.append(0.0)
-                if 0.1 < power < 5:
-                    power_series.append(power*0.57)
-                elif 5 < power < 7.5:
-                    power_series.append(power*0.85)
-                elif 7.5 < power < 9.5:
-                    power_series.append(power*0.96)
-                else:
-                    power_series.append(power)
-                # power_series.append(power)
+                # if power is None:
+                #     power_series.append(0.0)
+                # elif 0.1 < power < 5:
+                #     power_series.append(power*0.57)
+                # elif 5 < power < 7.5:
+                #     power_series.append(power*0.85)
+                # elif 7.5 < power < 9.5:
+                #     power_series.append(power*0.96)
+                # else:
+                #     power_series.append(power)
+                power_series.append(pm.correction_power(power))
                 # print(center)
             except Exception as e:
                 print(f"Erreur: {e}")
