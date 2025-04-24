@@ -265,7 +265,8 @@ def afficher_power():
         pm.update_temperature(pm.get_temp(temps, i))
         if i % 32 == 0 and i != 0:
             try:
-                power, params = pm.get_power()
+                power, centre = pm.get_power_center()
+                print(centre)
                 # power, center = pm.get_power_sigmas()
                 # power, center = pm.get_power_center()
                 # power, center = pm.get_power_zones()
@@ -283,7 +284,7 @@ def afficher_power():
                 # print(center)
             except Exception as e:
                 print(f"Erreur: {e}")
-                # # print(pm.get_moy_temp())
+            #     # # print(pm.get_moy_temp())
                 continue
     print(len(power_series))
     affiche_graphique(np.arange(len(power_series)),
@@ -297,13 +298,13 @@ def afficher_wv():
     # temps = np.load("test_data_ref/test_450_0W-5W_step5W_temps_pow.npy")
 
     temps = np.load("test_data_ref/test_973_0W-20W_step2.5W_temps_pow.npy")
-    pm = PowerMeter_nocam(wv_series=20)
+    pm = PowerMeter_nocam()
     wv_series = []
     for i in range(temps.shape[0]):
         pm.update_temperature(pm.get_temp(temps, i))
         if i % 32 == 0 and i != 0:
             try:
-                wv = pm.get_wavelength(gain=1, integ=0, tau=0)
+                wv = pm.get_wavelength()
                 # power, center = pm.get_power_sigmas()
                 # if abs(wv) <2:
                 wv_series.append(wv)
@@ -330,8 +331,8 @@ if __name__ == "__main__":
     # afficher_integration()
     # afficher_3D_temp()
     # afficher_puissance_serie_t()
-    afficher_power()
-    # afficher_wv()
+    # afficher_power()
+    afficher_wv()
     # affiche_graphique(np.load("wv_6.npy"),
     #                   np.load("Ratios_2_6.npy"),
     #                   "Longueur d'onde (nm)",
