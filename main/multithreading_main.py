@@ -56,7 +56,7 @@ class PowerMeterThread(threading.Thread):
                 elif command == "get_position":
                     try:
                         result = self.pm.get_power_center()
-                        print(f" result: {result}")
+                        # print(f" result: {result}")
 
                         # check that we got a tuple with at least 2 elements
                         if isinstance(result, tuple) and len(result) >= 2:
@@ -400,6 +400,9 @@ class ThreadedPowerMeterApp(PowerMeterApp):
                         else:
                             _, P, position = result
 
+                            if self.recording_enabled:
+                                self.position_list.append(position)
+
                             self.position_tuple = position
                             self.display_position(position)
                             self.pos_measurement_label.config(text=f"[{position[0]:.2f}:{position[1]:.2f}]")
@@ -430,12 +433,12 @@ class ThreadedPowerMeterApp(PowerMeterApp):
             self.ax_1.set_xlim(0, self.total_saving_duration)
         self.ax_1.plot(self.plot_x_1, self.plot_y_1)
         self.ax_1.set_xlabel('Temps [s]')
-        self.ax_1.set_ylabel('Puissance (mW)')
+        self.ax_1.set_ylabel('Puissance (W)')
         self.ax_1.grid(True)
         self.canvas_1.draw()
         
         # update power measurement label
-        self.pw_measurement_label.config(text=f"{power:.2f} mW")
+        self.pw_measurement_label.config(text=f"{power:.2f}")
     
     def on_closing(self):
         """

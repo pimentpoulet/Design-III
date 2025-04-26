@@ -53,7 +53,7 @@ class PowerMeterApp:
         self.power_values_1 = None
         self.wavelengths_2 = None
         self.power_values_2 = None
-        self.position_tuple = (0, 0)
+        self.position_list = []
         self.last_selected_wavelength = ""
         self.current_values = [450, 976, 1976]
 
@@ -229,7 +229,7 @@ class PowerMeterApp:
         self.fig_1, self.ax_1 = plt.subplots(figsize=(10, 5))
         self.canvas_1 = FigureCanvasTkAgg(self.fig_1, master=self.graph_frame)
         self.ax_1.set_xlabel("Temps [s]")
-        self.ax_1.set_ylabel("Puissance [mW]")
+        self.ax_1.set_ylabel("Puissance [W]")
         self.ax_1.set_ylim(-1, 12)
         self.ax_1.grid(True)
 
@@ -341,6 +341,7 @@ class PowerMeterApp:
                 if not self.recording_path:
                     self.toggle_button.set_state(False)
                     self.recording_enabled = False
+                    self.position_list = []
                     print(" Enregistrement annulé - Aucun chemin spécifié.")
                     return
                 else:
@@ -364,6 +365,7 @@ class PowerMeterApp:
             self.test_duration_entry.grid_forget()
             if hasattr(self, 'recording_path'):
                 delattr(self, 'recording_path')
+            self.position_list = []
 
     def disable_buttons(self):
         """
@@ -454,9 +456,9 @@ class PowerMeterApp:
         try:
             with open(save_path, mode="w", newline="") as file:
                 writer = csv.writer(file)
-                writer.writerow(["Time [s]", "Power [mW]"])
-                for time, pw in zip(self.wavelengths_1, self.power_values_1):
-                    writer.writerow([time, pw])
+                writer.writerow(["Time [s]", "Power [W]", "Position [mm:mm]"])
+                for time, pw, pos in zip(self.wavelengths_1, self.power_values_1, self.position_list):
+                    writer.writerow([time, pw, pos])
             print(f" Données enregistrées à {save_path}")
         except Exception as e:
             print(f" Erreur durant la sauvegarde: {e}")
@@ -528,7 +530,7 @@ class PowerMeterApp:
             self.ax_1.set_xlim(0, self.total_saving_duration)
 
         self.ax_1.set_xlabel('Time')
-        self.ax_1.set_ylabel('Power (mW)')
+        self.ax_1.set_ylabel('Power (W)')
         self.ax_1.grid(True)
         self.canvas_1.draw()
 

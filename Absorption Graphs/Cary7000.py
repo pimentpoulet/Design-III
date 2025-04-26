@@ -17,10 +17,10 @@ data_path_echs_noir = Path(r"Absorption Graphs\Equipe4_ech.csv")
 data_path = Path(r"Absorption Graphs\Plaques_Alexandre.csv")
 
 plt.rcParams.update({
-    "axes.labelsize": 18,    # Axis labels
-    "xtick.labelsize": 16,   # X-axis tick labels
-    "ytick.labelsize": 16,   # Y-axis tick labels
-    "legend.fontsize": 20    # Legend
+    "axes.labelsize": 24,    # Axis labels
+    "xtick.labelsize": 24,   # X-axis tick labels
+    "ytick.labelsize": 24,   # Y-axis tick labels
+    "legend.fontsize": 24    # Legend
 })
 
 app = xl.App(visible=False)
@@ -45,6 +45,10 @@ wv_5 = np.array([x[2] for x in split_arr], dtype=float)                         
 wv_6 = np.array([x[0] for x in split_arr], dtype=float)                         # 6
 wv_n = np.array([x[8] for x in split_arr], dtype=float)                         # BBQ
 
+wv_rust_1 = np.array([x[4] for x in split_arr_echs_noir], dtype=float)    # rust 1
+wv_rust_2 = np.array([x[6] for x in split_arr_echs_noir], dtype=float)    # rust 2
+wv_rust_3 = np.array([x[8] for x in split_arr_echs_noir], dtype=float)    # rust 2
+
 a_baseline_100 = 100.0 - np.array([x[1] for x in split_arr_echs_noir], dtype=float)    # ref abs
 a_baseline_0 = 100.0 - np.array([x[3] for x in split_arr_echs_noir], dtype=float)      # ref refl
 a_1 = 100.0 - np.array([x[11] for x in split_arr_echs_noir], dtype=float)              # 1
@@ -54,6 +58,20 @@ a_4 = 100.0 - np.array([x[5] for x in split_arr], dtype=float)                  
 a_5 = 100.0 - np.array([x[3] for x in split_arr], dtype=float)                         # 5
 a_6 = 100.0 - np.array([x[1] for x in split_arr], dtype=float)                         # 6
 a_n = 100.0 - np.array([x[9] for x in split_arr], dtype=float)                         # BBQ
+
+a_rust_1 = 100.0 - np.array([x[5] for x in split_arr_echs_noir], dtype=float)    # rust 1
+a_rust_2 = 100.0 - np.array([x[7] for x in split_arr_echs_noir], dtype=float)    # rust 2
+a_rust_3 = 100.0 - np.array([x[9] for x in split_arr_echs_noir], dtype=float)    # rust 3
+
+# rust plots
+plt.plot(wv_rust_1, a_rust_1, label="Échantillon non rouillé")
+plt.plot(wv_rust_2, a_rust_2, label="Échantillon rouillé 1")
+plt.plot(wv_rust_3, a_rust_3, label="Échantillon rouillé 2")
+plt.xlabel("Longueur d'onde [nm]")
+plt.ylabel("Absorptivité [%]")
+plt.grid(True)
+plt.legend()
+plt.show()
 
 # ratios
 
