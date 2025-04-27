@@ -20,8 +20,8 @@ app = xl.App(visible=False)
 
 wb_data = xl.Book(germanium_thorlabs)
 data_sheet = wb_data.sheets[0]
-wv_data = data_sheet["C2:C2300"].options(np.array).value
-tr_data = data_sheet["D2:D2300"].options(np.array).value
+wv_data = data_sheet["C2:C2380"].options(np.array).value
+tr_data = data_sheet["D2:D2380"].options(np.array).value
 
 plt.plot(wv_data, tr_data, color="black", label="Transmission de la fenêtre de germanium")
 plt.xlabel("Longueur d'onde [nm]")
